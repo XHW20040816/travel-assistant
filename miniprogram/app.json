@@ -1,0 +1,54 @@
+{
+  "pages": [
+    "pages/guide/guide",
+    "pages/index/index",
+    "pages/plan/plan",
+    "pages/map/map",
+    "pages/weather/weather",
+    "pages/guideHelp/guideHelp",
+    "pages/poi/poi",
+    "pages/mine/mine"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#1B2A4A",
+    "navigationBarTitleText": "行程规划师",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F4F6FB"
+  },
+  "tabBar": {
+    "color": "#7C879C",
+    "selectedColor": "#2E6BE6",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/guideHelp/guideHelp",
+        "text": "介绍"
+      },
+      {
+        "pagePath": "pages/guide/guide",
+        "text": "攻略"
+      },
+      {
+        "pagePath": "pages/index/index",
+        "text": "规划"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于定位出发地并计算路线、距离与赶路时间"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseLocation"
+  ],
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

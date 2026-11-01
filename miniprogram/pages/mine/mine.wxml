@@ -1,0 +1,146 @@
+<view class="page">
+  <view class="mine-hero">
+    <view class="mine-hero__title">我的配置</view>
+    <view class="mine-hero__sub">数据源、Key、缓存与历史行程都在这里。默认通过云函数访问真实地图与天气接口。</view>
+    <view class="mine-hero__status">
+      <text class="status-dot"></text>
+      <text>当前：{{sourceLabel}} · {{provider === 'amap' ? '高德' : '百度'}}地图</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">数据源</view>
+    <view wx:for="{{sourceOptions}}" wx:key="key" class="option {{source === item.key ? 'option--active' : ''}}" data-key="{{item.key}}" bindtap="pickSource">
+      <view class="option__radio">{{source === item.key ? '●' : '○'}}</view>
+      <view class="option__body">
+        <view class="option__label">{{item.label}}</view>
+        <view class="option__desc">{{item.desc}}</view>
+      </view>
+    </view>
+    <view class="tiny warn">超出实时预报范围的日期会显示「暂无预报」，不做气候代填，出行前请复核官方预报。</view>
+  </view>
+
+  <view class="card">
+    <view class="section-head">
+      <view class="section-title">地图与天气服务</view>
+      <text class="link" bindtap="toggleShowKey">{{showKey ? '隐藏 Key' : '显示 Key'}}</text>
+    </view>
+    <view class="chips">
+      <view wx:for="{{providerOptions}}" wx:key="key" class="chip {{provider === item.key ? 'chip--active' : ''}}" data-key="{{item.key}}" bindtap="pickProvider">{{item.label}}</view>
+    </view>
+    <view class="tiny provider-desc">{{providerDesc}}</view>
+
+    <view class="field">
+      <text class="field__label">高德 Web 服务 Key</text>
+      <input class="field__input" value="{{keys.amap}}" password="{{!showKey}}" data-key="amap" bindinput="onKeyInput" bindblur="onKeyBlur" placeholder="高德控制台创建 Web 服务 Key" />
+    </view>
+    <view class="field">
+      <text class="field__label">百度地图 AK</text>
+      <input class="field__input" value="{{keys.baidu}}" password="{{!showKey}}" data-key="baidu" bindinput="onKeyInput" bindblur="onKeyBlur" placeholder="百度控制台创建服务端 AK" />
+    </view>
+    <view class="tiny">百度 AK 开启 SN 校验时需在云函数配置 BAIDU_SK（SK 不下发前端），百度地图强制走云开发模式。</view>
+    <view class="field">
+      <text class="field__label">和风天气 Key（可选）</text>
+      <input class="field__input" value="{{keys.qweather}}" password="{{!showKey}}" data-key="qweather" bindinput="onKeyInput" bindblur="onKeyBlur" placeholder="用于 7 天预报，不填则用高德 4 天" />
+    </view>
+    <view class="tiny">Key 以 AES-128-CTR 加密保存在本机，不会明文落盘；云开发模式下经 HTTPS 传给 travelApi，日志不记录 Key。留空保存即清除。</view>
+    <view class="btn-row">
+      <view class="btn-ghost" bindtap="saveAll">保存配置</view>
+      <view class="btn-ghost" bindtap="testConfig">{{testing ? '校验中…' : '测试连接'}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">部署步骤</view>
+    <view wx:for="{{deploySteps}}" wx:key="*this" class="step-line">{{index + 1}}. {{item}}</view>
+    <view class="tiny">环境变量入口：云开发控制台 → 云函数 → travelApi → 版本详情 → 配置 → 环境变量 → 保存。</view>
+    <view class="divider"></view>
+    <view class="section-title">开放平台控制台</view>
+    <view wx:for="{{consoleLinks}}" wx:key="url" class="link-row">
+      <text class="link-row__label">{{item.label}}</text>
+      <text class="link-row__text ellipsis">{{item.url}}</text>
+      <text class="link" data-text="{{item.url}}" bindtap="copyText">复制</text>
+    </view>
+    <view class="tiny">云函数环境变量（可选兜底）：AMAP_KEY、BAIDU_AK、BAIDU_SK（开启 SN 校验时必填）、QWEATHER_KEY（可选 QWEATHER_HOST / MAP_PROVIDER / INTERNAL_TOKEN）。攻略 Key 在下方「攻略大模型」中配置。</view>
+  </view>
+
+  <view class="card">
+    <view class="section-head">
+      <view class="section-title">攻略大模型</view>
+      <text class="link" bindtap="toggleShowKey">{{showKey ? '隐藏 Key' : '显示 Key'}}</text>
+    </view>
+    <view class="field">
+      <text class="field__label">DeepSeek API Key</text>
+      <input class="field__input" value="{{llm.deepseek}}" password="{{!showKey}}" data-field="deepseek" bindinput="onLlmInput" placeholder="platform.deepseek.com 创建，用于生成攻略速览" />
+    </view>
+    <view class="field">
+      <text class="field__label">模型名称</text>
+      <input class="field__input" value="{{llm.model}}" data-field="model" bindinput="onLlmInput" placeholder="deepseek-chat" />
+    </view>
+    <view class="tiny {{llmReady ? '' : 'warn'}}">{{llmReady ? '已配置：攻略页将生成 AI 参考速览，并提供平台搜索链接' : '未配置：攻略页无法生成攻略速览'}}</view>
+    <view class="tiny">攻略平台（小红书 / 抖音 / 知乎 / 马蜂窝 / B站）在攻略页顶部选择，选择结果会保存在本机。</view>
+    <view class="tiny"><text class="link" bindtap="goGuideHelp">Key 怎么申请？看项目介绍 ›</text></view>
+    <view class="tiny">Key 以 AES-128-CTR 加密后保存在本机，不会明文落盘；调用攻略时经 HTTPS 传给云函数 guideProxy，日志不记录 Key。</view>
+    <view class="btn-row">
+      <view class="btn-ghost" bindtap="saveLlm">保存攻略配置</view>
+      <view class="btn-ghost" bindtap="clearLlm">清除</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-head">
+      <view class="section-title">本地缓存</view>
+      <text class="tiny">已用 {{cacheSizeText}} / 上限 {{storageLimitText}}</text>
+    </view>
+    <view class="cache-row">
+      <text>缓存条目 {{cacheCount}} 条</text>
+      <text class="tiny">POI 7 天 · 天气 30 分钟 · 路线 10 分钟自动失效</text>
+    </view>
+    <view class="btn-row">
+      <view class="btn-ghost" bindtap="clearCache">清理缓存</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-head">
+      <view class="section-title">历史行程</view>
+      <text wx:if="{{history.length}}" class="link" bindtap="clearHistory">清空</text>
+    </view>
+    <block wx:if="{{history.length}}">
+      <view wx:for="{{history}}" wx:key="id" class="history" data-id="{{item.id}}" bindtap="openHistory">
+        <view class="history__main">
+          <view class="history__title">{{item.destName}}</view>
+          <view class="tiny">{{item.dateText}}</view>
+          <view class="tiny">{{item.scoreText}}<text wx:if="{{item.costText}}"> · {{item.costText}}</text></view>
+        </view>
+        <view class="history__right">
+          <text class="tiny">{{item.timeText}}</text>
+          <text class="history__del" data-id="{{item.id}}" catchtap="removeHistory">删除</text>
+        </view>
+      </view>
+    </block>
+    <view wx:else class="empty-block">
+      <view class="tiny">还没有历史行程，去首页生成一份方案吧</view>
+      <view class="btn-ghost empty-btn" bindtap="goPlan">去规划</view>
+    </view>
+  </view>
+
+  <view wx:if="{{allowDirect}}" class="card">
+    <view class="section-title">直连模式域名白名单</view>
+    <view wx:for="{{domains}}" wx:key="*this" class="link-row">
+      <text class="link-row__text ellipsis">{{item}}</text>
+      <text class="link" data-text="{{item}}" bindtap="copyText">复制</text>
+    </view>
+    <view class="tiny">直连调试需在小程序后台「开发管理 - 开发设置 - 服务器域名」添加以上 request 合法域名；云开发模式由云函数访问上游，不受该白名单限制。服务端 Key 没有域名白名单，只能在高德/百度控制台设置 IP 白名单或日配额上限。</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">数据与合规说明</view>
+    <view class="source-line">1. 小红书 / 抖音 / 知乎等平台没有面向小程序的内容接口，攻略模块只由 DeepSeek 生成通用参考速览，并给出对应平台的真实搜索链接；小程序内不抓取平台内容。</view>
+    <view class="source-line">2. 天气、POI、路径均带抓取时间，过期会提示复核；开放时间与预约政策请以景区官方公告为准。</view>
+    <view class="source-line">3. 本工具输出为决策参考，不替代官方售票、预约与安全提示。</view>
+    <view class="tiny version">行程规划师 v{{version}}</view>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

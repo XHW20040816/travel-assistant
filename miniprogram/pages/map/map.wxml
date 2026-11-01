@@ -1,0 +1,89 @@
+<view class="page map-page">
+  <view wx:if="{{empty}}" class="empty">
+    暂无行程数据，请先生成规划
+  </view>
+
+  <block wx:else>
+    <scroll-view scroll-x class="day-tabs" enable-flex>
+      <view wx:for="{{dayTabs}}" wx:key="index" class="day-tab {{activeDay === index ? 'day-tab--active' : ''}}" data-index="{{index}}" bindtap="selectDay">
+        <text class="day-tab__label">{{item.label}}</text>
+        <text class="day-tab__date">{{item.date}}</text>
+        <text class="day-tab__weather">{{item.weather}}</text>
+      </view>
+    </scroll-view>
+
+    <view class="map-card">
+      <map
+        id="routeMap"
+        class="map"
+        latitude="{{center.latitude}}"
+        longitude="{{center.longitude}}"
+        markers="{{markers}}"
+        polyline="{{polylines}}"
+        include-points="{{includePoints}}"
+        scale="12"
+        show-location="{{false}}"
+        bindmarkertap="onMarkerTap"
+        enable-zoom
+        enable-scroll
+      ></map>
+      <view class="legend">
+        <view class="legend-item"><view class="legend-line"></view><text>实时/规划路线</text></view>
+        <view class="legend-item"><view class="legend-line legend-line--dashed"></view><text>本地估算</text></view>
+      </view>
+    </view>
+
+    <view class="card day-info">
+      <view class="day-info__head">
+        <view>
+          <text class="day-info__date">D{{activeDay + 1}} · {{dayInfo.date}}</text>
+          <text class="tiny"> {{dayInfo.weekday}}</text>
+        </view>
+        <view class="day-info__weather">{{dayInfo.weather}}</view>
+      </view>
+      <view class="day-info__tags">
+        <text class="tag tag--blue">穿衣 {{dayInfo.clothing}}</text>
+        <text class="tag">{{dayInfo.activity}}</text>
+        <text class="tag tag--green">{{dayInfo.poiCount}} 个点位</text>
+      </view>
+      <view class="tiny">
+        共 {{dayInfo.legCount}} 段路程 · 预计通勤 {{dayInfo.totalTravel}}
+        <text wx:if="{{dayInfo.estimatedCount}}"> · {{dayInfo.estimatedCount}} 段为估算</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-head">
+        <view class="section-title">分段路程</view>
+        <text class="tiny">可切换交通方式重算</text>
+      </view>
+      <view wx:for="{{legs}}" wx:key="index" class="leg">
+        <view class="leg__badge leg__badge--{{item.mode}}">{{item.badge}}</view>
+        <view class="leg__body">
+          <view class="leg__title">{{item.fromName}} → {{item.toName}}</view>
+          <view class="leg__meta">
+            <text>{{item.modeLabel}}</text>
+            <text>· {{item.distanceText}}</text>
+            <text>· 约 {{item.durationText}}</text>
+            <text wx:if="{{item.costText}}">· {{item.costText}}</text>
+            <text wx:if="{{item.estimated}}" class="leg__warn">· 估算</text>
+          </view>
+          <view class="leg__modes">
+            <text class="mode {{item.mode === 'walk' ? 'mode--active' : ''}}" data-index="{{index}}" data-mode="walk" bindtap="switchMode">步行</text>
+            <text class="mode {{item.mode === 'transit' ? 'mode--active' : ''}}" data-index="{{index}}" data-mode="transit" bindtap="switchMode">公交</text>
+            <text class="mode {{item.mode === 'taxi' ? 'mode--active' : ''}}" data-index="{{index}}" data-mode="taxi" bindtap="switchMode">打车</text>
+          </view>
+        </view>
+        <view class="leg__nav" data-index="{{index}}" bindtap="navTo">导航</view>
+      </view>
+      <view wx:if="{{!legs.length}}" class="empty">当日暂无分段路程</view>
+    </view>
+
+    <view class="actions-row">
+      <view class="btn-ghost" bindtap="goWeather">天气与穿衣</view>
+      <view class="btn-ghost" bindtap="goPlan">返回方案</view>
+    </view>
+  </block>
+
+  <view class="safe-bottom"></view>
+</view>

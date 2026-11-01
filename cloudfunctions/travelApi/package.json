@@ -1,0 +1,9 @@
+{
+  "name": "travelApi",
+  "version": "1.0.0",
+  "description": "出行规划数据网关：代理高德/百度/和风天气，带云端缓存",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

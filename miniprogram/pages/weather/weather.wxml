@@ -1,0 +1,71 @@
+<view class="page">
+  <view wx:if="{{empty}}" class="empty">暂无行程数据，请先生成规划</view>
+
+  <block wx:else>
+    <view class="weather-hero">
+      <view class="weather-hero__title">{{plan.dest.name}} · 行程天气</view>
+      <view class="weather-hero__summary">{{summary}}</view>
+      <view class="weather-hero__meta">{{sourceText}}</view>
+    </view>
+
+    <view wx:for="{{days}}" wx:key="index" class="card day-card">
+      <view class="day-card__head">
+        <view class="day-card__date">
+          <text class="day-card__label">{{item.label}}</text>
+          <text>{{item.dateLabel}} {{item.weekday}}</text>
+        </view>
+        <view class="day-card__temp">
+          <text class="day-card__high">{{item.tempText}}</text>
+        </view>
+      </view>
+
+      <view class="day-card__weather">
+        <text>{{item.weatherText}}</text>
+        <text wx:if="{{item.nightText}}" class="tiny">夜间 {{item.nightText}}</text>
+        <text wx:if="{{item.outOfRange}}" class="tag tag--orange">暂无预报</text>
+      </view>
+
+      <view class="env-grid">
+        <view class="env">
+          <view class="env__value">{{item.rainProbText}}</view>
+          <view class="env__label">降水概率</view>
+        </view>
+        <view class="env">
+          <view class="env__value">{{item.windText}}</view>
+          <view class="env__label">风向风力</view>
+        </view>
+        <view class="env">
+          <view class="env__value">{{item.humidityText}}</view>
+          <view class="env__label">湿度</view>
+        </view>
+        <view class="env">
+          <view class="env__value">{{item.uvText}}</view>
+          <view class="env__label">紫外线</view>
+        </view>
+      </view>
+
+      <view class="clothing-block">
+        <view class="clothing-block__head">
+          <text class="tag tag--blue">穿衣 {{item.clothing.level}}</text>
+          <text class="tiny">{{item.activity.level}}</text>
+        </view>
+        <view class="clothing-block__text">{{item.clothing.text}}</view>
+        <view class="clothing-items">
+          <text wx:for="{{item.clothing.items}}" wx:for-item="it" wx:key="*this" class="tag">{{it}}</text>
+        </view>
+        <view wx:if="{{item.clothing.tips.length}}" class="tips">
+          <view wx:for="{{item.clothing.tips}}" wx:for-item="tip" wx:key="*this" class="tip">· {{tip}}</view>
+        </view>
+        <view class="activity">{{item.activity.text}}</view>
+        <view wx:if="{{item.note}}" class="tiny note">{{item.note}}</view>
+      </view>
+    </view>
+
+    <view class="actions-row">
+      <view class="btn-ghost" bindtap="goPlan">返回方案</view>
+      <view class="btn-ghost" bindtap="goGuide">看当地攻略</view>
+    </view>
+  </block>
+
+  <view class="safe-bottom"></view>
+</view>

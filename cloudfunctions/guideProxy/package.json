@@ -1,0 +1,9 @@
+{
+  "name": "guideProxy",
+  "version": "1.0.0",
+  "description": "攻略速览：DeepSeek 生成 AI 参考总结，并返回对应平台的真实搜索入口",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

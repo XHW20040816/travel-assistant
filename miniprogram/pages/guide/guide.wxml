@@ -1,0 +1,157 @@
+<template name="guideCard">
+  <view class="card guide-card">
+    <view class="guide-card__head">
+      <text class="tag tag--blue">{{item.platformLabel || '网页'}}</text>
+      <text class="tiny">{{item.updatedText}}</text>
+    </view>
+    <view class="guide-card__title">{{item.title}}</view>
+    <view class="guide-card__meta">
+      <text>{{item.author}}</text>
+      <text wx:if="{{item.sourceName && item.sourceName !== item.platformLabel}}">· {{item.sourceName}}</text>
+      <text wx:if="{{item.likesText}}">· {{item.likesText}} 赞</text>
+      <text>· 非平台原文</text>
+    </view>
+    <view class="guide-card__summary">{{item.summary}}</view>
+
+    <view wx:if="{{openMap[item.id]}}" class="points">
+      <view wx:for="{{item.points}}" wx:for-item="point" wx:key="*this" class="point">· {{point}}</view>
+    </view>
+
+    <view wx:if="{{item.related.length}}" class="guide-card__tags">
+      <text wx:for="{{item.related}}" wx:for-item="name" wx:key="*this" class="tag tag--blue" data-name="{{name}}" bindtap="openRelatedPoi">{{name}}</text>
+    </view>
+
+    <view class="guide-card__actions">
+      <text class="link" data-id="{{item.id}}" bindtap="toggleGuide">{{openMap[item.id] ? '收起要点' : '展开要点'}}</text>
+      <text class="link" data-id="{{item.id}}" bindtap="copyGuide">复制要点</text>
+      <text wx:if="{{item.url}}" class="link" data-url="{{item.url}}" bindtap="copySource">复制平台搜索链接</text>
+    </view>
+
+    <view wx:if="{{item.stale}}" class="stale">该内容更新时间较早，点位营业/预约信息请以官方公告为准</view>
+  </view>
+</template>
+
+<view class="page">
+  <view class="guide-hero">
+    <view class="guide-hero__title">{{city ? city : '目的地'}}攻略</view>
+    <view class="guide-hero__sub">输入或地图选点想去的城市，先看 AI 参考速览，再复制平台搜索链接去查看真实内容；热门景点到规划页按兴趣偏好挑选。</view>
+    <view class="guide-hero__row">
+      <text class="guide-hero__badge">{{platformLabel}} · {{sourceBadge}}</text>
+      <text class="guide-hero__refresh" bindtap="refresh">{{loading ? '生成中…' : '重新生成'}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">想去哪里</view>
+    <view class="city-input-row">
+      <input
+        class="city-input"
+        value="{{inputCity}}"
+        placeholder="输入城市或景区，如 成都、西湖"
+        placeholder-class="city-input__ph"
+        maxlength="20"
+        confirm-type="search"
+        bindinput="onCityInput"
+        bindconfirm="onSearch"
+      />
+      <view class="btn-mini city-input__btn" bindtap="onSearch">{{loading ? '生成中…' : '生成速览'}}</view>
+    </view>
+    <view class="dest-actions">
+      <text class="link" bindtap="chooseDest">地图选点（带定位）</text>
+      <text wx:if="{{destPoint}}" class="link link--muted" bindtap="clearDest">清除坐标</text>
+    </view>
+    <view wx:if="{{destPoint}}" class="dest-point">
+      <text class="tag tag--green">已定位</text>
+      <text>{{destPoint.name}}</text>
+      <text class="tiny">{{destPoint.address || ''}}</text>
+    </view>
+    <view class="tiny city-input__note">先输入目的地生成速览，再带着目的地去规划页；同名地点可加上省份，如「浙江 杭州」。</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">攻略平台</view>
+    <view class="chips">
+      <view wx:for="{{platforms}}" wx:key="key" class="chip {{platform === item.key ? 'chip--active' : ''}}" data-key="{{item.key}}" bindtap="setPlatform">{{item.label}}</view>
+    </view>
+    <view wx:if="{{showCustomInput}}" class="custom-platform">
+      <input
+        class="input custom-platform__input"
+        value="{{customPlatform}}"
+        placeholder="输入平台名，如 携程、去哪儿"
+        placeholder-class="custom-platform__ph"
+        maxlength="{{customMaxLen}}"
+        confirm-type="search"
+        bindinput="onCustomInput"
+        bindconfirm="confirmCustom"
+        bindblur="onCustomBlur"
+      />
+      <view class="btn-mini custom-platform__btn" bindtap="confirmCustom">使用该平台</view>
+    </view>
+    <view class="tiny">AI 速览按所选平台的口径整理；小程序不抓取站内内容，链接为平台搜索入口，切换平台会重新生成并缓存 24 小时。</view>
+  </view>
+
+  <view wx:if="{{!llmReady && dataSource === 'cloud' && !error}}" class="card notice notice--info">
+    <view class="notice__title">还没配置攻略大模型</view>
+    <view class="notice__text">在「我的 - 攻略大模型」填写 DeepSeek Key 并保存，输入目的地后即可生成攻略速览。</view>
+    <view class="notice__actions">
+      <view class="btn-mini" bindtap="goMine">去配置 Key</view>
+    </view>
+  </view>
+
+  <view wx:if="{{!city && !loading && !error}}" class="card empty">
+    输入目的地并点「生成速览」，查看 AI 参考攻略
+  </view>
+
+  <view wx:if="{{error}}" class="card notice notice--warn">
+    <view class="notice__title">{{error.message}}</view>
+    <view wx:if="{{errorHint}}" class="notice__text">{{errorHint}}</view>
+    <view class="notice__actions">
+      <view class="btn-mini" bindtap="refresh">重试</view>
+      <view wx:if="{{needSetup}}" class="btn-mini" bindtap="goMine">去配置</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="card loading-card">
+    <view class="loading-card__title">正在生成「{{city}}」的{{platformLabel}}攻略速览…</view>
+    <view class="loading-card__bar"><view class="loading-card__bar-inner"></view></view>
+    <view class="tiny">大模型整理参考建议，约需 10–20 秒</view>
+  </view>
+
+  <view wx:if="{{liveItems.length}}" class="list-head">
+    <view class="section-title">AI 参考总结</view>
+    <text class="tiny">{{liveMeta}}</text>
+  </view>
+  <view wx:if="{{liveItems.length}}" class="tiny list-note">以下为 AI 根据通用旅行知识生成的参考速览，不是「{{platformLabel}}」原文；复制链接到平台查看真实内容。</view>
+  <block wx:for="{{liveItems}}" wx:key="id">
+    <template is="guideCard" data="{{item: item, openMap: openMap}}" />
+  </block>
+
+  <view wx:if="{{city && !loading && !liveItems.length && !error}}" class="card empty">
+    「{{city}}」暂未生成{{platformLabel}}攻略速览，可切换平台、换个目的地或稍后重试
+  </view>
+
+  <view class="card">
+    <view class="section-title">下一步：去规划</view>
+    <view class="tiny">规划页会按你勾选的兴趣偏好，筛选地图上的真实热门景点；点掉不想去的，再补上出发地、日期和预算，就能生成行程。</view>
+    <view class="btn-primary spot-plan-btn" bindtap="planWithSpots">带着目的地去规划</view>
+  </view>
+
+  <view class="card help-entry" bindtap="goHelp">
+    <view class="flex-1">
+      <view class="help-entry__title">了解这个小程序</view>
+      <view class="tiny">功能结构、技术方案与快速开始</view>
+    </view>
+    <text class="link">查看 ›</text>
+  </view>
+
+  <view class="card source-card">
+    <view class="section-title">内容说明</view>
+    <view class="source-line">1. 「AI 参考总结」由大模型根据通用旅行知识生成，不是所选平台原文，也不引用具体帖子；价格、营业时间、预约规则请以官方公告为准。</view>
+    <view class="source-line">2. 热门景点推荐在规划页，按你勾选的兴趣偏好筛选地图上的真实 POI；取消勾选只影响本次规划，可随时回到方案页重新选择。</view>
+    <view class="source-line">3. 小程序内不抓取平台内容；复制「平台搜索链接」后，可到浏览器或对应 App 查看真实笔记与视频。</view>
+    <view class="source-line">4. 目的地由你输入或地图选点，攻略不受当前行程限制；点位营业与预约信息以官方公告为准。</view>
+    <view class="source-line">5. 想更换模型或清除 Key，可到「我的 - 攻略大模型」调整。</view>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

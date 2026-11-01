@@ -1,0 +1,9 @@
+{
+  "name": "scheduledRefresh",
+  "version": "1.0.0",
+  "description": "定时清理过期缓存并预热常用城市",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

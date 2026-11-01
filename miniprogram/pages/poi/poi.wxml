@@ -1,0 +1,109 @@
+<view class="page">
+  <block wx:if="{{poi}}">
+    <view class="hero">
+      <view class="hero__top">
+        <text class="tag tag--blue">{{poi.category || '景点'}}</text>
+        <text class="tag">{{poi.outdoor ? '户外' : '室内'}}</text>
+        <text wx:if="{{hasScore}}" class="hero__score">{{planPoi.score}} 分</text>
+      </view>
+      <view class="hero__name">{{poi.name}}</view>
+      <view class="hero__meta">
+        <text>{{ratingText}} 分</text>
+        <text wx:if="{{reviewsText}}">· {{reviewsText}}</text>
+        <text>· {{costText}}</text>
+        <text>· 建议 {{durationText}}</text>
+      </view>
+      <view wx:if="{{dayLabel}}" class="hero__day">{{dayLabel}} · 已排入当前行程</view>
+      <view class="hero__tags">
+        <text wx:for="{{poi.tags}}" wx:key="*this" class="tag">{{item}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{hasScore}}" class="card">
+      <view class="section-head">
+        <view class="section-title">决策评分</view>
+        <text class="tag {{planPoi.score >= 80 ? 'tag--green' : 'tag--blue'}}">{{planPoi.scoreGrade}}</text>
+      </view>
+      <view class="score-line">
+        <view class="score-big">{{planPoi.score}}</view>
+        <view class="score-side">
+          <view wx:for="{{planPoi.reasonsText}}" wx:key="*this" class="reason">· {{item}}</view>
+        </view>
+      </view>
+      <view class="divider"></view>
+      <view class="section-title parts-title">评分构成</view>
+      <view wx:for="{{parts}}" wx:key="key" class="part">
+        <text class="part__label">{{item.label}}</text>
+        <view class="part__bar"><view class="part__inner" style="width: {{item.width}}%"></view></view>
+        <text class="part__value">{{item.value}}</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">游玩信息</view>
+      <view class="info-row">
+        <text class="info-row__label">开放时间</text>
+        <text class="info-row__value">{{poi.openTime || '以官方公告为准'}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-row__label">建议游玩</text>
+        <text class="info-row__value">{{durationText}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-row__label">门票参考</text>
+        <text class="info-row__value">{{costText}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-row__label">地址</text>
+        <text class="info-row__value">{{poi.address || '—'}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-row__label">数据时间</text>
+        <text class="info-row__value">{{fetchedText}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{poi.tips}}" class="card">
+      <view class="section-title">游玩提示</view>
+      <view class="tips">{{poi.tips}}</view>
+    </view>
+
+    <view class="card">
+      <view class="section-head">
+        <view class="section-title">相关攻略</view>
+        <text class="link" bindtap="goGuide">攻略页</text>
+      </view>
+      <block wx:if="{{guides.length}}">
+        <view wx:for="{{guides}}" wx:key="id" class="guide">
+          <view class="guide__head">
+            <text class="tiny">{{item.freshnessText}}</text>
+          </view>
+          <view class="guide__title">{{item.title}}</view>
+          <view class="guide__summary">{{item.summary}}</view>
+        </view>
+      </block>
+      <view wx:else class="tiny">暂无该点位的攻略摘要，可复制搜索词到小红书/抖音查看最新笔记。</view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">出行提醒</view>
+      <view class="note">开放时间、门票与预约政策可能随季节或节假日调整，请以景区官方公告为准；攻略内容请注意更新时间。</view>
+    </view>
+
+    <view class="actions">
+      <view class="btn-primary" bindtap="navigate">地图导航前往</view>
+      <view class="actions-row">
+        <view class="btn-ghost" bindtap="copyInfo">复制信息</view>
+        <view class="btn-ghost" bindtap="copySearch">复制攻略搜索词</view>
+        <view class="btn-ghost" bindtap="goBack">返回方案</view>
+      </view>
+    </view>
+  </block>
+
+  <view wx:else class="card empty">
+    未找到该点位数据，可能已被新方案替换，请返回行程页重新进入。
+    <view class="btn-ghost empty-btn" bindtap="goBack">返回</view>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

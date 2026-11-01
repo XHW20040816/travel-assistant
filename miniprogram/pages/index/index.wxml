@@ -1,0 +1,225 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero__badge">地图 · 天气 · 攻略 · 决策</view>
+    <view class="hero__title">一次生成最优行程</view>
+    <view class="hero__sub">融合高德/百度路径与实时路况、逐日天气与穿衣建议，结合攻略要点做多方案对比。</view>
+    <view class="hero__meta">
+      <text class="hero__dot"></text>
+      <text>数据源：{{sourceText}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="field">
+      <view class="field__head">
+        <text class="label">目的地</text>
+        <text class="tiny">支持城市名 / 区县名</text>
+      </view>
+      <input class="input" value="{{destName}}" bindinput="onDestInput" bindblur="onDestBlur" bindconfirm="suggestByKeyword" confirm-type="search" placeholder="输入城市，如 成都" />
+      <scroll-view wx:if="{{cityOptions.length}}" scroll-x class="city-scroll" enable-flex>
+        <view wx:for="{{cityOptions}}" wx:key="name" class="chip {{destName === item.name ? 'chip--active' : ''}}" bindtap="pickCity" data-name="{{item.name}}">{{item.name}}</view>
+      </scroll-view>
+      <view wx:if="{{guideDest && guideDest.lng}}" class="tiny guide-dest">目的地来自攻略页地图选点，热门景点会按该位置检索</view>
+    </view>
+
+    <view class="field">
+      <view class="field__head">
+        <text class="label">出发地</text>
+        <view class="row">
+          <text class="link" bindtap="useLocation">定位</text>
+          <text class="link" bindtap="chooseOrigin">地图选点</text>
+          <text wx:if="{{origin}}" class="link link--muted" bindtap="clearOrigin">清除</text>
+        </view>
+      </view>
+      <view class="origin">{{originLabel}}</view>
+      <text class="tiny">出发地与目的地相距 80 公里内时，将以出发地作为首日起点并计算赶路时间。</text>
+    </view>
+
+    <view class="field">
+      <view class="field__head">
+        <text class="label">出行日期</text>
+        <text class="tiny">最多 {{maxDays}} 天</text>
+      </view>
+      <view class="picker-row">
+        <picker class="picker-item" mode="date" value="{{startDate}}" start="{{minDate}}" end="{{maxDate}}" bindchange="onStartChange">
+          <view class="picker-box">{{startDate}} {{startWeekday}}<text class="caret">▾</text></view>
+        </picker>
+        <picker class="picker-item" mode="date" value="{{endDate}}" start="{{startDate}}" end="{{endMaxDate}}" bindchange="onEndChange">
+          <view class="picker-box">{{endDate}} {{endWeekday}}<text class="caret">▾</text></view>
+        </picker>
+      </view>
+      <text class="tiny">{{startDate}} 出发 · {{endDate}} 结束 · 共 {{dayCount}} 天</text>
+    </view>
+
+    <view class="field">
+      <view class="field__head">
+        <text class="label">每日活动时段</text>
+        <text class="tiny">超出时段自动删减点位</text>
+      </view>
+      <view class="picker-row">
+        <picker class="picker-item" mode="time" value="{{dayStart}}" bindchange="onDayStartChange">
+          <view class="picker-box">{{dayStart}} 开始<text class="caret">▾</text></view>
+        </picker>
+        <picker class="picker-item" mode="time" value="{{dayEnd}}" bindchange="onDayEndChange">
+          <view class="picker-box">{{dayEnd}} 结束<text class="caret">▾</text></view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="field__head">
+        <text class="label">兴趣偏好</text>
+        <text class="tiny">可多选，筛选热门景点并影响选点排序</text>
+      </view>
+      <view class="chips">
+        <view wx:for="{{prefOptions}}" wx:key="key" class="chip {{prefMap[item.key] ? 'chip--active' : ''}}" data-key="{{item.key}}" bindtap="togglePref">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="field spot-field">
+      <view class="section-head">
+        <view class="section-title">热门景点推荐</view>
+        <view class="row">
+          <text class="tiny">已选 {{selectedSpotCount}}/{{spots.length}}</text>
+          <text class="link" bindtap="refreshSpots">{{spotsLoading ? '筛选中…' : '刷新'}}</text>
+        </view>
+      </view>
+      <view wx:if="{{spotHint}}" class="tiny spot-hint">{{spotHint}}</view>
+      <view wx:if="{{spotsLoading}}" class="tiny">正在按兴趣偏好筛选热门景点…</view>
+      <view wx:elif="{{spotError}}" class="tiny spot-error">景点推荐暂不可用：{{spotError}}</view>
+      <view wx:elif="{{spots.length}}" class="spot-list">
+        <view
+          wx:for="{{spots}}"
+          wx:key="id"
+          class="spot-item {{item.selected ? 'spot-item--on' : ''}}"
+          data-index="{{index}}"
+          bindtap="toggleSpot"
+        >
+          <view class="spot-check">{{item.selected ? '✓' : ''}}</view>
+          <view class="spot-main">
+            <view class="spot-name">{{item.name}}</view>
+            <view class="tiny">{{item.category}} · {{item.ratingText}}{{item.address ? ' · ' + item.address : ''}}</view>
+          </view>
+          <text class="spot-state {{item.selected ? 'spot-state--on' : ''}}">{{item.selected ? '想去' : '不去'}}</text>
+        </view>
+      </view>
+      <view wx:else class="tiny">{{destName ? '暂无可推荐的景点，可点「刷新」重试' : '填写目的地后，这里会按兴趣偏好推荐热门景点'}}</view>
+      <view class="tiny spot-note">默认全部保留，点一下即可取消不想去的景点；规划时优先安排保留的景点，并排除取消的景点。</view>
+    </view>
+
+    <view class="field">
+      <text class="label">行程节奏</text>
+      <view class="chips">
+        <view wx:for="{{paceOptions}}" wx:key="key" class="chip {{pace === item.key ? 'chip--active' : ''}}" data-key="{{item.key}}" bindtap="setPace">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="field__head">
+        <text class="label">人均每日预算</text>
+        <text class="tiny">¥{{budgetMin}} – ¥{{budgetMax}} / 人 / 天</text>
+      </view>
+      <view class="budget-row">
+        <text class="budget-row__label">最低</text>
+        <input class="input budget-input" type="number" value="{{budgetMin}}" bindinput="onBudgetMinInput" bindblur="onBudgetMinBlur" />
+        <text class="budget-row__unit">元</text>
+      </view>
+      <view class="budget-row">
+        <text class="budget-row__label">最高</text>
+        <input class="input budget-input" type="number" value="{{budgetMax}}" bindinput="onBudgetMaxInput" bindblur="onBudgetMaxBlur" />
+        <text class="budget-row__unit">元</text>
+      </view>
+      <view class="tiny">按人均每天填写（{{budgetRange.min}}-{{budgetRange.max}} 元），行程花费会落在该区间；失焦后自动校正为最低小于最高。</view>
+    </view>
+
+    <view class="field">
+      <view class="field__head">
+        <text class="label">住宿偏好</text>
+        <text class="tiny">每晚每间 ¥{{stayMin}} – ¥{{stayMax}}</text>
+      </view>
+      <view class="chips">
+        <view wx:for="{{stayTypeOptions}}" wx:key="key" class="chip {{stayType === item.key ? 'chip--active' : ''}}" data-key="{{item.key}}" bindtap="setStayType">{{item.label}}</view>
+      </view>
+      <view class="budget-row">
+        <text class="budget-row__label">最低</text>
+        <input class="input budget-input" type="number" value="{{stayMin}}" bindinput="onStayMinInput" bindblur="onStayMinBlur" />
+        <text class="budget-row__unit">元</text>
+      </view>
+      <view class="budget-row">
+        <text class="budget-row__label">最高</text>
+        <input class="input budget-input" type="number" value="{{stayMax}}" bindinput="onStayMaxInput" bindblur="onStayMaxBlur" />
+        <text class="budget-row__unit">元</text>
+      </view>
+      <view class="tiny">仅用于住宿推荐，按每晚每间计价（{{stayBudgetRange.min}}-{{stayBudgetRange.max}} 元），不计入人均日预算；参考价来自地图平台，实际以预订平台为准。</view>
+    </view>
+
+    <view class="field">
+      <text class="label">交通偏好</text>
+      <view class="chips">
+        <view wx:for="{{transportOptions}}" wx:key="key" class="chip {{transport === item.key ? 'chip--active' : ''}}" data-key="{{item.key}}" bindtap="setTransport">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="field__head">
+        <text class="label">出行人数</text>
+        <text class="tiny">影响交通方式与预算</text>
+      </view>
+      <view class="party-row">
+        <view class="stepper">
+          <view class="stepper__btn" data-delta="-1" bindtap="changeParty">−</view>
+          <view class="stepper__value">{{party}} 人</view>
+          <view class="stepper__btn" data-delta="1" bindtap="changeParty">+</view>
+        </view>
+        <view class="chips chips--inline">
+          <view class="chip {{hasElder ? 'chip--active' : ''}}" bindtap="toggleElder">有老人</view>
+          <view class="chip {{hasChild ? 'chip--active' : ''}}" bindtap="toggleChild">带小孩</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="btn-primary submit" bindtap="startPlanning">开始智能规划</view>
+    <view class="tiny submit-note">将生成「均衡 / 省时 / 省钱」三套方案，并标注数据更新时间与风险点</view>
+  </view>
+
+  <view class="card note-card">
+    <view class="section-title">数据与时效说明</view>
+    <view class="note-item">
+      <text class="note-index">01</text>
+      <view class="note-content">
+        <view class="note-title">路线与赶路时间</view>
+        <view class="note-text">接入高德/百度路径规划，优先使用实时路况；失败时自动回退本地估算并明确标注。</view>
+      </view>
+    </view>
+    <view class="note-item">
+      <text class="note-index">02</text>
+      <view class="note-content">
+        <view class="note-title">天气与穿衣</view>
+        <view class="note-text">高德 4 天 / 和风 7 天真实预报；超出范围显示「暂无预报」，不做气候代填。</view>
+      </view>
+    </view>
+    <view class="note-item">
+      <text class="note-index">03</text>
+      <view class="note-content">
+        <view class="note-title">攻略内容</view>
+        <view class="note-text">小红书、抖音无开放内容接口，攻略由大模型检索公开结果后整理。</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{history.length}}" class="card">
+    <view class="section-head">
+      <view class="section-title">最近计划</view>
+      <text class="link" bindtap="onShow">刷新</text>
+    </view>
+    <view wx:for="{{history}}" wx:key="id" class="history-item" bindtap="openHistory" data-id="{{item.id}}">
+      <view class="history-main">
+        <view class="history-title">{{item.destName}} · {{item.days}} 天</view>
+        <view class="tiny">{{item.startDate}} 出发 · {{item.party}} 人 · {{item.totalCostText}}</view>
+      </view>
+      <view class="history-score">{{item.score}}<text class="history-score-unit">分</text></view>
+    </view>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

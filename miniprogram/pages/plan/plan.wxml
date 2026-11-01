@@ -1,0 +1,240 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="card loading-card">
+    <view class="loading-title">正在生成行程方案</view>
+    <view class="loading-sub">{{progressText}}</view>
+    <view class="bar loading-bar"><view class="bar__inner" style="width: {{percent}}%"></view></view>
+    <view class="steps">
+      <view wx:for="{{steps}}" wx:key="label" class="step step--{{item.state}}">
+        <view class="step__dot">{{item.state === 'done' ? '✓' : index + 1}}</view>
+        <text class="step__label">{{item.label}}</text>
+      </view>
+    </view>
+    <view class="tiny loading-note">正在融合地图路径、天气与攻略数据，请稍候</view>
+  </view>
+
+  <view wx:elif="{{error}}" class="card error-card">
+    <view class="error-title">规划失败</view>
+    <view class="error-text">{{error}}</view>
+    <view class="error-actions">
+      <view class="btn-ghost" bindtap="retry">重试</view>
+      <view class="btn-ghost" bindtap="backToEdit">返回修改</view>
+    </view>
+  </view>
+
+  <block wx:else>
+    <view class="trip-head">
+      <view class="trip-head__title">为你规划的行程</view>
+      <view class="tiny">{{destLine}}</view>
+    </view>
+
+    <scroll-view scroll-x class="variant-scroll" enable-flex>
+      <view wx:for="{{plansMeta}}" wx:key="name" class="variant {{item.active ? 'variant--active' : ''}}" data-index="{{index}}" bindtap="switchPlan">
+        <view class="variant__top">
+          <text class="variant__name">{{item.name}}</text>
+          <text class="variant__score">{{item.score}}</text>
+        </view>
+        <view class="variant__tag">{{item.tagline}}</view>
+      </view>
+    </scroll-view>
+
+    <view class="card overview">
+      <view class="overview-head">
+        <view class="overview-head__main">
+          <view class="overview-title">{{plan.name}}</view>
+          <view class="tiny">综合评分 {{plan.score}} 分 · 方案排名 {{plan.rank}}</view>
+        </view>
+        <view class="score-badge {{plan.scoreCls}}">{{plan.scoreGrade}}</view>
+      </view>
+      <view class="metric-grid">
+        <view class="metric">
+          <view class="metric__value">{{plan.metrics.poiCount}}</view>
+          <view class="metric__label">个精选点位</view>
+        </view>
+        <view class="metric">
+          <view class="metric__value">{{plan.metrics.travelText}}</view>
+          <view class="metric__label">全程通勤</view>
+        </view>
+        <view class="metric">
+          <view class="metric__value">{{plan.metrics.perPersonText}}</view>
+          <view class="metric__label">人均花费</view>
+        </view>
+        <view class="metric">
+          <view class="metric__value">{{plan.metrics.totalCostText}}</view>
+          <view class="metric__label">合计（{{plan.party || ''}}人）</view>
+        </view>
+      </view>
+      <view class="divider"></view>
+      <view class="overview-foot">
+        <text>偏好覆盖 {{plan.metrics.coverageText}}</text>
+        <text>· 动线优化节省 {{plan.metrics.savedMinutes}} 分钟</text>
+        <text>· 已校正 {{plan.metrics.refinedLegs}} 段实时路况</text>
+      </view>
+      <view wx:if="{{plan.metrics.estimatedLegs}}" class="tiny">另有 {{plan.metrics.estimatedLegs}} 段为本地估算，地图中以虚线标注</view>
+    </view>
+
+    <view wx:if="{{spotChips.length}}" class="card spot-adjust">
+      <view class="section-head">
+        <view class="section-title">调整推荐景点</view>
+        <text class="tiny">保留 {{spotActiveCount}}/{{spotChips.length}}</text>
+      </view>
+      <view class="tiny">点一下取消不想去的景点，再点「重新规划」，系统会排除该景点并重排动线与日期。</view>
+      <view class="chips spot-adjust__chips">
+        <view
+          wx:for="{{spotChips}}"
+          wx:key="id"
+          class="chip {{item.active ? 'chip--active' : ''}}"
+          data-index="{{index}}"
+          bindtap="toggleSpotChip"
+        >{{item.name}}{{item.active ? ' ✓' : ''}}</view>
+      </view>
+      <view class="btn-ghost spot-adjust__btn" bindtap="applySpots">重新规划</view>
+      <view wx:if="{{spotActiveCount === 0}}" class="tiny spot-adjust__warn">至少保留一个推荐景点才能重新规划</view>
+    </view>
+
+    <view wx:if="{{stayCards.length}}" class="card stay-card">
+      <view class="section-head">
+        <view class="section-title">住宿推荐</view>
+        <text class="tiny">{{plan.stayBudgetText}}</text>
+      </view>
+      <scroll-view scroll-x class="stay-scroll" enable-flex>
+        <view wx:for="{{stayCards}}" wx:key="id" class="stay-tab {{item.active ? 'stay-tab--active' : ''}}" data-index="{{index}}" bindtap="switchStay">
+          <view class="stay-tab__name">{{item.name}}</view>
+          <view class="stay-tab__meta">{{item.typeLabel}} · {{item.ratingText}}</view>
+        </view>
+      </scroll-view>
+      <block wx:for="{{stayCards}}" wx:key="id">
+        <view wx:if="{{item.active}}" class="stay-detail">
+          <view class="stay-detail__head">
+            <view class="stay-detail__main">
+              <view class="stay-detail__name">{{item.name}}</view>
+              <view class="tiny">{{item.typeLabel}} · {{item.ratingText}} · 推荐度 {{item.score}}</view>
+            </view>
+            <view class="stay-detail__price">{{item.priceTag}}</view>
+          </view>
+          <view class="stay-tags">
+            <text wx:if="{{item.anchorText}}" class="tag tag--blue">{{item.anchorText}}</text>
+            <text class="tag tag--green">{{item.commuteText}}</text>
+            <text wx:if="{{item.budgetMatched}}" class="tag tag--orange">预算内</text>
+          </view>
+          <view wx:if="{{item.address}}" class="stay-address">{{item.address}}</view>
+          <view wx:for="{{item.reasons}}" wx:for-item="reason" wx:for-index="ri" wx:key="*this" class="tiny stay-reason">· {{reason}}</view>
+          <view class="stay-actions">
+            <text class="link" bindtap="openStayMap" data-index="{{index}}">地图查看</text>
+          </view>
+        </view>
+      </block>
+      <view class="tiny stay-note">{{plan.stayAnchorText}}；价格为地图平台参考价，房型与实时房价以预订平台为准。</view>
+    </view>
+
+    <view class="card">
+      <view class="section-head">
+        <view class="section-title">每日行程</view>
+        <text class="tiny">点击日期展开/收起</text>
+      </view>
+      <view wx:for="{{dayCards}}" wx:key="date" class="day {{item.open ? 'day--open' : ''}}">
+        <view class="day-head" bindtap="toggleDay" data-index="{{index}}">
+          <view class="day-date">
+            <text class="day-num">D{{index + 1}}</text>
+            <text>{{item.dateLabel}} {{item.weekday}}</text>
+          </view>
+          <view class="day-weather">
+            <text>{{item.weatherText}} {{item.tempText}}</text>
+            <text class="tiny">{{item.rainText}}</text>
+          </view>
+        </view>
+        <view class="day-tags">
+          <text class="tag tag--blue">穿衣 {{item.clothing.level}}</text>
+          <text class="tag">{{item.activity.level}}</text>
+          <text class="tag tag--green">{{item.statsText.cost}}</text>
+        </view>
+        <view wx:if="{{item.open}}" class="timeline">
+          <view wx:for="{{item.items}}" wx:for-item="act" wx:key="index" class="tl tl--{{act.type}}">
+            <view class="tl-time">{{act.timeText}}</view>
+            <view class="tl-axis">
+              <view class="tl-dot">{{act.icon}}</view>
+              <view class="tl-line"></view>
+            </view>
+            <view class="tl-body">
+              <view class="tl-title">{{act.name || act.title}}</view>
+              <view class="tl-sub">{{act.subtitle || act.metaText}}</view>
+              <view wx:if="{{act.type === 'poi'}}" class="tl-tags">
+                <text class="tag">{{act.category}}</text>
+                <text wx:for="{{act.tags}}" wx:for-item="t" wx:key="*this" class="tag tag--blue">{{t}}</text>
+              </view>
+              <view wx:if="{{act.type === 'poi'}}" class="tl-actions">
+                <text class="link" bindtap="openPoi" data-id="{{act.poiId}}">点位详情</text>
+                <text class="link" bindtap="navigatePoi" data-id="{{act.poiId}}">导航</text>
+              </view>
+              <view wx:if="{{act.type === 'poi' && act.tips}}" class="tl-tip">{{act.tips}}</view>
+            </view>
+          </view>
+        </view>
+        <view wx:if="{{item.open}}" class="day-foot">
+          <view class="day-foot__line">通勤 {{item.statsText.travel}} · {{item.statsText.distance}} · 当日花费 {{item.statsText.cost}}</view>
+          <view class="clothing">
+            <text class="clothing__label">穿衣建议</text>
+            <text class="clothing__text">{{item.clothing.text}}</text>
+          </view>
+          <view class="clothing">
+            <text class="clothing__label">天气策略</text>
+            <text class="clothing__text">{{item.activity.text}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">决策依据</view>
+      <view wx:for="{{plan.decisions}}" wx:key="title" class="decision">
+        <view class="decision__title">{{item.title}}</view>
+        <view class="decision__text">{{item.text}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">风险与复核</view>
+      <view wx:for="{{plan.risks}}" wx:key="title" class="risk risk--{{item.level}}">
+        <view class="risk__title">{{item.title}}</view>
+        <view class="risk__text">{{item.text}}</view>
+      </view>
+      <view class="divider"></view>
+      <view class="tiny">{{metaText}}</view>
+    </view>
+
+    <view class="card">
+      <view class="section-head">
+        <view class="section-title">相关攻略</view>
+        <text class="link" bindtap="goGuide">查看全部</text>
+      </view>
+      <view wx:for="{{plan.guides}}" wx:key="id" class="guide-mini">
+        <view class="guide-mini__head">
+          <text class="tiny">{{item.updatedText}} · {{item.freshnessText}}</text>
+        </view>
+        <view class="guide-mini__title">{{item.title}}</view>
+        <view class="guide-mini__summary">{{item.summary}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">点位评分</view>
+      <view wx:for="{{plan.pois}}" wx:key="id" class="poi-row">
+        <view class="poi-row__main">
+          <view class="poi-row__name">{{item.name}}</view>
+          <view class="tiny">{{item.reasons[0] || '综合评分入选'}}</view>
+        </view>
+        <view class="poi-row__score">{{item.score}}</view>
+      </view>
+    </view>
+
+    <view class="actions">
+      <view class="btn-primary" bindtap="goMap">地图可视化路线</view>
+      <view class="actions-row">
+        <view class="btn-ghost" bindtap="goWeather">天气与穿衣</view>
+        <view class="btn-ghost" bindtap="copyPlan">复制行程</view>
+        <view class="btn-ghost" bindtap="refreshData">刷新数据</view>
+      </view>
+    </view>
+  </block>
+
+  <view class="safe-bottom"></view>
+</view>
