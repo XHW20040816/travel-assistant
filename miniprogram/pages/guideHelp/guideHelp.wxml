@@ -49,8 +49,8 @@
       <view class="module__desc">路线页看每天怎么走、每段要多久；天气页看逐日天气、穿什么、下雨或高温怎么调整；点位页可以一键调起微信地图导航。</view>
     </view>
     <view class="module">
-      <view class="module__name">我的 · 填 Key、做检查</view>
-      <view class="module__desc">地图、天气和攻略服务需要的 Key 都在这里填，填完可以点「测试配置」确认能不能用。换手机或清缓存后要重新填一次。</view>
+      <view class="module__name">我的 · 绑定 Key、历史与缓存</view>
+      <view class="module__desc">在大模型、导航、天气三处填写你自己的 API Key：大模型 Key 用于生成攻略速览，导航 Key 用于景点、路线与地图数据，天气 Key 用于逐日预报。Key 只加密保存在本机，仅随本次请求传给云函数，不上传、不共享；换手机或清缓存后需要重新填写。这里还能查看历史行程、继续之前的方案和清理本地缓存。</view>
     </view>
   </view>
 
@@ -69,37 +69,16 @@
       <view class="faq__a">地图上没有提供的数据不会编造。没有评分就按中性分参与排序，没有票价会提示以景区公告为准，避免“未知”被当成免费。</view>
     </view>
     <view class="faq">
+      <view class="faq__q">为什么要在「我的」填 Key？</view>
+      <view class="faq__a">攻略、地图、天气都要调用第三方服务，用你自己的 Key 就只消耗你自己的额度。Key 加密保存在本机，请求时随调用交给云函数转发，云函数不保存，也不会记录到日志。没有填大模型 Key 时攻略页会提示你先去绑定，导航或天气 Key 没填对应功能会不可用。</view>
+    </view>
+    <view class="faq">
       <view class="faq__q">为什么攻略有时要等十几秒？</view>
       <view class="faq__a">攻略速览由大模型生成，第一次会慢一些；同一目的地 24 小时内会用缓存，想更新可以手动重新生成。规划页的热门景点推荐不依赖这一步，攻略失败也能继续规划。</view>
     </view>
     <view class="faq">
       <view class="faq__q">预算填了，为什么花费还可能超一点？</view>
       <view class="faq__a">预算影响的是选点、交通和住宿的取舍，不是硬性封顶。门票、临时涨价或绕路都可能让实际花费浮动，方案里会标出主要花费和超支风险，方便你提前决定。</view>
-    </view>
-  </view>
-
-  <view class="card">
-    <view class="section-title">现在的配置状态</view>
-    <view class="status-row">
-      <text class="status-row__label">地图与天气服务</text>
-      <text class="status-row__value {{mapReady === 3 ? 'ok' : 'warn'}}">{{mapReady}} / 3 已配置 · 高德{{hasAmap ? '✓' : '✕'}} 百度{{hasBaidu ? '✓' : '✕'}} 和风{{hasQweather ? '✓' : '✕'}}</text>
-    </view>
-    <view class="status-row">
-      <text class="status-row__label">攻略整理</text>
-      <text class="status-row__value {{llmReady ? 'ok' : 'warn'}}">{{llmReady ? '已配置 · ' : '未配置 · '}}{{model}}</text>
-    </view>
-    <view class="status-row">
-      <text class="status-row__label">数据来源</text>
-      <text class="status-row__value">{{dataSource === 'cloud' ? '云开发' : '直连调试'}} · {{guideFn}}</text>
-    </view>
-    <view class="bullet" style="margin-top: 16rpx;">
-      <text class="bullet__dot">·</text>
-      <text>地图和天气没配好，规划与天气预报会用不了；攻略大模型没配，攻略页无法生成速览，但热门景点推荐照常可用。</text>
-    </view>
-    <view class="step__hint">需要申请 Key：<text class="step__link" data-text="https://platform.deepseek.com" bindtap="copyText">platform.deepseek.com</text>（攻略速览），点一下即可复制。</view>
-    <view class="btn-row">
-      <view class="btn-ghost" bindtap="goMine">去「我的」填 Key</view>
-      <view class="btn-ghost" bindtap="goGuide">去攻略页</view>
     </view>
   </view>
 

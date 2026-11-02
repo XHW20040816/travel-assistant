@@ -1,9 +1,24 @@
 .guide-hero {
-  padding: 32rpx;
+  position: relative;
+  padding: 36rpx 32rpx 38rpx;
   border-radius: 24rpx;
-  background: linear-gradient(135deg, #22345C, #2E6BE6);
+  background: linear-gradient(135deg, #1E2E52 0%, #2B4C87 55%, #2E6BE6 100%);
   color: #FFFFFF;
   margin-bottom: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 16rpx 36rpx rgba(27, 42, 74, 0.18);
+}
+
+.guide-hero::after {
+  content: "";
+  position: absolute;
+  right: -60rpx;
+  top: -80rpx;
+  width: 300rpx;
+  height: 300rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
 }
 
 .guide-hero__title {
@@ -145,12 +160,12 @@
 
 .custom-platform__input {
   flex: 1;
-  height: 72rpx;
-  padding: 0 20rpx;
-  font-size: 28rpx;
+  height: 80rpx;
+  padding: 0 24rpx;
+  font-size: 27rpx;
   color: #14213D;
-  background: #F4F6FB;
-  border-radius: 12rpx;
+  background: #F5F7FB;
+  border-radius: 16rpx;
 }
 
 .custom-platform__ph {
@@ -159,6 +174,9 @@
 
 .custom-platform__btn {
   flex-shrink: 0;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
 }
 
 .search-row {
@@ -226,7 +244,7 @@
 
 .points {
   margin-top: 12rpx;
-  background: #F8FAFD;
+  background: #F7F9FD;
   border-radius: 14rpx;
   padding: 16rpx 18rpx;
 }
@@ -279,13 +297,12 @@
 
 .city-input {
   flex: 1;
-  height: 76rpx;
+  height: 80rpx;
   padding: 0 24rpx;
   border-radius: 16rpx;
-  background: #F4F6FA;
-  border: 2rpx solid #E3E8F3;
+  background: #F5F7FB;
   font-size: 27rpx;
-  color: #22345C;
+  color: #1B2333;
 }
 
 .city-input__ph {
@@ -294,6 +311,9 @@
 
 .city-input__btn {
   flex: none;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
 }
 
 .city-input__note {
@@ -322,7 +342,7 @@
   margin-top: 14rpx;
   padding: 14rpx 18rpx;
   border-radius: 14rpx;
-  background: #F7FAFF;
+  background: #F7F9FD;
   font-size: 24rpx;
   color: #43516B;
 }

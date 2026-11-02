@@ -22,11 +22,16 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** 经纬度必须同时落在合法范围内，避免越界坐标进入 POI / 路线请求 */
+/** 经纬度必须同时落在合法范围内，且拒绝空值 / (0,0)，避免空串被 Number 成 0 */
 function isCoordPair(lng, lat) {
-  const x = Number(lng)
-  const y = Number(lat)
-  return Number.isFinite(x) && Number.isFinite(y) && x >= -180 && x <= 180 && y >= -90 && y <= 90
+  const rawLng = String(lng == null ? '' : lng).trim()
+  const rawLat = String(lat == null ? '' : lat).trim()
+  if (!rawLng || !rawLat) return false
+  const x = Number(rawLng)
+  const y = Number(rawLat)
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false
+  if (x < -180 || x > 180 || y < -90 || y > 90) return false
+  return !(x === 0 && y === 0)
 }
 
 function mean(list) {
@@ -108,7 +113,8 @@ function cleanSpots(list) {
       lng: Number(item.lng),
       lat: Number(item.lat),
       address: String(item.address || ''),
-      tags: Array.isArray(item.tags) ? item.tags.slice(0, 3) : []
+      tags: Array.isArray(item.tags) ? item.tags.slice(0, 3) : [],
+      custom: !!item.custom
     }))
     .filter((item) => item.name)
     .slice(0, 20)
@@ -166,6 +172,9 @@ function normalizeRequest(raw) {
     hotSpots: cleanSpots(raw.hotSpots),
     preferredSpots: cleanNames(raw.preferredSpots, 20),
     excludedSpots: cleanNames(raw.excludedSpots, 20),
+    // 名称 + 坐标键：新旧请求兼容，缺少时回退按名称匹配
+    preferredKeys: Array.isArray(raw.preferredKeys) ? cleanNames(raw.preferredKeys, 60) : null,
+    excludedKeys: Array.isArray(raw.excludedKeys) ? cleanNames(raw.excludedKeys, 60) : null,
     startDate,
     endDate,
     days,
@@ -238,10 +247,42 @@ function normalizeName(name) {
   return String(name || '').replace(/\s+/g, '').toLowerCase()
 }
 
-function isExcluded(name, excludedNames) {
-  const key = normalizeName(name)
+/** 去重键：名称 + 坐标保留 5 位小数，同名不同位置可以共存 */
+function spotKey(name, lng, lat) {
+  const x = Number(lng)
+  const y = Number(lat)
+  const coord = Number.isFinite(x) && Number.isFinite(y) ? `${x.toFixed(5)},${y.toFixed(5)}` : ''
+  return `${normalizeName(name)}|${coord}`
+}
+
+function isExcluded(spot, req) {
+  // 新请求按「名称 + 坐标」判断，同名不同位置不会互相排除
+  if (Array.isArray(req.excludedKeys)) {
+    return req.excludedKeys.indexOf(spotKey(spot && spot.name, spot && spot.lng, spot && spot.lat)) >= 0
+  }
+  const key = normalizeName(spot && spot.name)
   if (!key) return false
-  return (excludedNames || []).some((item) => normalizeName(item) === key)
+  return (req.excludedSpots || []).some((item) => normalizeName(item) === key)
+}
+
+/**
+ * 自定义点位来自规划页手输 + 地图选点，地图 POI 检索未必能搜到，直接并入候选池
+ * 只并入仍被勾选的点位（优先按 preferredKeys，旧请求回退 preferredSpots），并按「名称 + 坐标」去重
+ */
+function mergeCustomSpots(pois, req) {
+  const preferred = (req.preferredSpots || []).map(normalizeName)
+  const useKeys = Array.isArray(req.preferredKeys)
+  const extras = (req.hotSpots || []).filter((spot) => {
+    if (!spot.custom || !isCoordPair(spot.lng, spot.lat)) return false
+    if (useKeys) {
+      return req.preferredKeys.indexOf(spotKey(spot.name, spot.lng, spot.lat)) >= 0
+    }
+    return !preferred.length || preferred.indexOf(normalizeName(spot.name)) >= 0
+  })
+  if (!extras.length) return pois
+  const seen = pois.map((poi) => spotKey(poi.name, poi.lng, poi.lat))
+  const additions = extras.filter((spot) => seen.indexOf(spotKey(spot.name, spot.lng, spot.lat)) < 0)
+  return additions.concat(pois)
 }
 
 function hotelPoint(req) {
@@ -811,7 +852,7 @@ function composePlan(draft, req, weatherList, legCache, options) {
     },
     meta: {
       refined: isRefined,
-      source: storage.getSettings().dataSource,
+      source: 'cloud',
       weatherSource,
       weatherFetchedAt,
       poiFetchedAt,
@@ -965,18 +1006,21 @@ async function generate(rawRequest, onProgress) {
   const center = { lng: destResult.lng, lat: destResult.lat }
 
   report({ step: 1, percent: 24, text: '检索目的地景点与热度数据' })
-  const allPois = await mapService.searchPoi({
-    cityName: destResult.name || req.destName,
-    adcode: destResult.adcode,
-    center,
-    prefs: req.prefs,
-    focusKeywords: req.preferredSpots,
-    limit: config.limits.maxPoiCandidates,
-    force: req.force
-  })
+  const allPois = mergeCustomSpots(
+    await mapService.searchPoi({
+      cityName: destResult.name || req.destName,
+      adcode: destResult.adcode,
+      center,
+      prefs: req.prefs,
+      focusKeywords: req.preferredSpots,
+      limit: config.limits.maxPoiCandidates,
+      force: req.force
+    }),
+    req
+  )
   // 候选池保留被排除的景点，便于方案页取消排除后重新加回
   const hotSpots = cleanSpots(allPois).slice(0, 16)
-  const pois = allPois.filter((poi) => !isExcluded(poi.name, req.excludedSpots))
+  const pois = allPois.filter((poi) => !isExcluded(poi, req))
   if (!pois.length) {
     throw new Error('你排除的景点过多，已没有可安排的候选点位，请至少保留一个后重试')
   }
@@ -1152,5 +1196,6 @@ module.exports = {
   generate,
   normalizeRequest,
   slimPlan,
-  hotelPoint
+  hotelPoint,
+  spotKey
 }

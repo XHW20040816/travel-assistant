@@ -10,14 +10,14 @@
 
 | 模块 | 页面 | 主要能力 |
 |---|---|---|
-| 介绍 | `pages/guideHelp/guideHelp` | 三步使用说明、模块介绍、常见问题、配置状态 |
+| 介绍 | `pages/guideHelp/guideHelp` | 三步使用说明、模块介绍、常见问题、快速入口 |
 | 攻略 | `pages/guide/guide` | 按平台生成 AI 攻略速览（总结 + 亮点 + 避坑 + 最佳时间），一键复制平台搜索链接 |
-| 规划 | `pages/index/index` | 目的地 / 地图选点、出发地定位、日期、兴趣偏好、节奏、预算、住宿、交通、人数；按偏好筛选热门景点 |
+| 规划 | `pages/index/index` | 目的地 / 地图选点、出发地定位、日期、兴趣偏好、节奏、预算、住宿、交通、人数；按偏好筛选热门景点，也可输入名称 + 地图选点添加自定义景点 |
 | 方案 | `pages/plan/plan` | 生成三套方案并对比总花费、赶路时间、每日安排；可增删景点后重新规划 |
 | 路线 | `pages/map/map` | 每日动线、分段耗时、路径展示 |
 | 天气 | `pages/weather/weather` | 逐日预报、穿衣与行程调整建议 |
 | 点位 | `pages/poi/poi` | 景点详情、评分、票价提示、调起微信地图导航 |
-| 我的 | `pages/mine/mine` | Key 配置（本机加密）、连接测试、缓存与历史行程管理、合规说明 |
+| 我的 | `pages/mine/mine` | 绑定自己的大模型 / 导航 / 天气 Key，历史行程、本地缓存管理、服务状态检查 |
 
 ### 攻略平台
 
@@ -27,6 +27,17 @@
 - 每个条目附带该平台的搜索深链，复制后到浏览器或对应 App 查看真实笔记 / 视频；
 - 同一目的地 + 平台 + 模型的结果在云端缓存 24 小时，可手动「重新生成」；
 - 平台选择只影响生成口径与搜索入口，不改变数据来源的合规边界。
+
+### 自定义景点
+
+规划页支持在热门景点之外补充自己的点位：输入名称后点「地图选点」，选点坐标会与名称一起进入本次规划的候选池。
+
+- 坐标必须是合法经纬度：空值、超出范围以及 `(0,0)` 都会被拒绝并提示「选点坐标无效」；
+- 最多添加 8 个自定义景点，超出会提示上限；
+- 距目的地超过 50 km 时弹窗提示一次，确认后仍可添加；
+- 去重按「名称 + 坐标（保留 5 位小数）」：同名不同位置可以共存，自定义点不会顶掉地图检索到的真实 POI；
+- 勾选状态通过 `preferredKeys` / `excludedKeys` 传入规划，同名不同位置的点位可以独立勾选或排除；
+- 自定义景点会置顶显示，切换目的地后自动清空。
 
 ---
 
@@ -51,9 +62,9 @@ Travel assistant/
 │  │  ├─ map.js / weather.js    # 地图 POI、地理编码、路线、天气
 │  │  ├─ plan.js                # 行程编排、打分、住宿与风险说明
 │  │  ├─ guide.js               # 攻略速览调用与平台校验
-│  │  ├─ storage.js             # 本地存储、加密 Key、缓存 TTL
+│  │  ├─ storage.js             # 本地存储、历史行程、缓存 TTL、Key 加密读写
 │  │  └─ hotel.js
-│  ├─ utils/                    # cipher / date / geo / format / decision
+│  ├─ utils/                    # date / geo / format / decision / cipher
 │  └─ data/cities.js
 ├─ cloudfunctions/
 │  ├─ travelApi/                # 高德 / 百度 / 和风代理，含 upstream.js
@@ -88,26 +99,27 @@ Travel assistant/
 
 > 不要选「所有文件」上传：本地没有 `node_modules`，必须让云端安装依赖。
 
-### 4. 环境变量（可选，但上线建议配置）
+### 4. 环境变量（仅内部调用使用，可选）
+
+所有用户请求的 Key 都来自小程序「我的」页，云函数**不会**回落到运营者的环境变量。下面的变量只对携带 `INTERNAL_TOKEN` 的云函数间调用（如 `scheduledRefresh`）生效。
 
 **travelApi**
 
 | 变量 | 说明 |
 |---|---|
-| `AMAP_KEY` | 高德 Web 服务 Key |
-| `BAIDU_AK` / `BAIDU_SK` | 百度服务端 AK / SK（开启 SN 校验时必填，SK 只存云端） |
-| `QWEATHER_KEY` / `QWEATHER_HOST` | 和风天气 Key 与 API Host（可选，用于 7 天预报） |
-| `MAP_PROVIDER` | 默认地图商：`amap` 或 `baidu` |
 | `INTERNAL_TOKEN` | 云函数间调用令牌，定时任务鉴权用 |
+| `AMAP_KEY` / `BAIDU_AK` / `BAIDU_SK` | 仅内部调用时使用的高德 / 百度 Key（可选） |
+| `QWEATHER_KEY` / `QWEATHER_HOST` | 仅内部调用时的和风天气 Key 与 API Host（可选） |
+| `MAP_PROVIDER` | 请求未指定 provider 时的默认地图商：`amap` 或 `baidu` |
 
 **guideProxy**
 
 | 变量 | 说明 |
 |---|---|
-| `DEEPSEEK_API_KEY` | DeepSeek Key（可选；不配则由用户在「我的」页填写） |
+| `INTERNAL_TOKEN` | 必须与 `travelApi` 一致 |
+| `DEEPSEEK_API_KEY` | 仅内部调用时使用；用户请求必须携带自己的 Key |
 | `DEEPSEEK_BASE_URL` | 默认 `https://api.deepseek.com` |
-| `DEEPSEEK_MODEL` | 默认 `deepseek-chat` |
-| `ALLOW_CLIENT_LLM_KEYS` | 设为 `0` 时只允许云端环境变量 Key，不接受前端传入 |
+| `DEEPSEEK_MODEL` | 用户未填模型名时的默认值 `deepseek-chat` |
 
 **scheduledRefresh**
 
@@ -120,14 +132,17 @@ Travel assistant/
 
 云开发数据库创建集合 `travel_cache`（云函数缓存、限流计数、定时清理都用它）。集合为空时首次调用会自动写入。
 
-### 6. 配置 Key 并验证
+### 6. 在「我的」绑定自己的 Key
 
-- 地图 / 天气 Key：在「我的」页填写并保存，或使用上面的云函数环境变量兜底；
-- 攻略 Key：在「我的 - 攻略大模型」填写 DeepSeek Key；
-- 点「测试连接」确认地图服务可用；
-- 到攻略页输入城市 →「生成速览」，看到「AI 参考总结」卡片即正常。
+服务 Key 全部由终端用户在小程序「我的」页自行填写，小程序不预置、也不使用运营者的 Key：
 
-Key 以 AES-128-CTR 加密保存在本机，不会明文落盘；云开发模式下经 HTTPS 传给云函数，日志不记录 Key。
+- **大模型**：填写 API Key 与模型名称（默认 `deepseek-chat`），攻略速览必填；
+- **导航**：选择高德或百度，填写对应的 Key；百度开启 SN 校验时再填 SK；
+- **天气**：填写和风天气 Key（可选，用于 7 天预报）。
+
+Key 在本机用 AES-128-CTR 加密后保存，每次请求随 `keys` / `llm` 传给云函数，云函数只在本次上游调用中使用，不落库、不写日志；请求结束后不留存。
+
+填完后可在「我的 - 检查服务状态」确认地图与天气可用；到攻略页输入城市 →「生成速览」，看到「AI 参考总结」卡片即正常。
 
 ---
 
@@ -142,7 +157,9 @@ Key 以 AES-128-CTR 加密保存在本机，不会明文落盘；云开发模式
                           └ 云端缓存 travel_cache（24 小时）
 ```
 
-- **规划**：先地理编码目的地和出发地，按兴趣偏好检索热门 POI，结合天气、评分、距离、预算、节奏做多因子打分与分组，再优化每日动线；景点可增删后重新规划。
+用户自己的 Key 由「我的」页加密保存在本机，调用时以 `keys` / `llm` 附带在请求中，云函数只用于当次上游请求。
+
+- **规划**：先地理编码目的地和出发地，按兴趣偏好检索热门 POI，结合天气、评分、距离、预算、节奏做多因子打分与分组，再优化每日动线；自定义景点会校验坐标后并入候选池，景点可增删后重新规划。
 - **缓存**：地图 / POI / 天气 / 路线在本地按 TTL 缓存；攻略在云端按 `城市|平台|自定义平台|模型` 缓存 24 小时。
 - **限流**：`travelApi` 按 OPENID + action 做 60 秒滑动窗口限流（默认 20 次/分钟）；`guideProxy` 每 OPENID 每分钟最多 6 次。
 - **错误处理**：云函数对外只返回脱敏错误码（如 `NO_KEY`、`RATE_LIMITED`、`UPSTREAM_FAIL`），页面按错误码给出可执行提示。
@@ -155,18 +172,26 @@ Key 以 AES-128-CTR 加密保存在本机，不会明文落盘；云开发模式
 
 ```powershell
 node tests/format.test.js
+node tests/decision.test.js
+node tests/geo.test.js
 node tests/guide-platform.test.js
 ```
 
 - `format.test.js`：攻略文本清洗、URL 白名单、平台检索词与提示词约束（12 项）
+- `decision.test.js`：方案打分、预算与强度决策（12 项）
+- `geo.test.js`：坐标校验、距离与坐标系转换（17 项）
 - `guide-platform.test.js`：平台识别、自定义平台容错、前端平台归一化（18 项）
+
+合计 59 项，全部应通过。
 
 语法自检：
 
 ```powershell
+node --check miniprogram/pages/index/index.js
+node --check miniprogram/pages/plan/plan.js
+node --check miniprogram/services/plan.js
+node --check cloudfunctions/travelApi/index.js
 node --check cloudfunctions/guideProxy/index.js
-node --check cloudfunctions/guideProxy/format.js
-node --check miniprogram/services/guide.js
 ```
 
 ---
@@ -175,11 +200,13 @@ node --check miniprogram/services/guide.js
 
 - [ ] `travelApi`、`guideProxy`、`scheduledRefresh` 均已用「云端安装依赖」部署
 - [ ] `guideProxy` 超时已改为 60 秒
-- [ ] 云函数环境变量已配置，且 `INTERNAL_TOKEN` 在 `travelApi` 与 `scheduledRefresh` 中一致
+- [ ] `INTERNAL_TOKEN` 在 `travelApi`、`guideProxy` 与 `scheduledRefresh` 中一致
 - [ ] 数据库集合 `travel_cache` 已创建
-- [ ] 「我的」页地图 / 天气 / DeepSeek Key 已配置并通过「测试连接」
+- [ ] 「我的」页可填写并加密保存大模型 / 导航 / 天气 Key；「检查服务状态」正常
+- [ ] 确认运营者 Key 仅用于内部调用，用户请求不会回落到环境变量
 - [ ] 小程序后台已配置隐私协议与定位权限说明（`getLocation` / `chooseLocation`）
-- [ ] 攻略页、规划页、方案页各走通一次；清理开发期本地缓存与历史行程
+- [ ] 攻略页、规划页、方案页各走通一次；自定义景点添加、同名点位勾选与排除正常
+- [ ] 清理开发期本地缓存与历史行程
 - [ ] 云开发控制台开启调用日志与用量配额告警
 
 ---
@@ -190,9 +217,3 @@ node --check miniprogram/services/guide.js
 2. AI 速览不是平台原文，不编造帖子、作者、点赞数或原帖链接；价格、营业时间、预约规则以景区官方公告为准。
 3. 地图与天气数据来自高德 / 百度 / 和风天气，使用时需遵守对应开放平台的服务条款与配额限制。
 4. 行程结果为决策参考，不替代官方售票、预约与安全提示。
-
----
-
-## 开发调试（可选）
-
-`config/index.js` 的 `dataSource` 支持 `cloud`（默认）与 `direct`。`direct` 仅用于开发版 / 体验版本地调试，正式版会自动回落到 `cloud`；百度地图因 SN 签名依赖服务端 SK，始终走云函数。上线版本建议只使用云开发模式。

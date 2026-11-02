@@ -7,15 +7,12 @@
  *     data: { action, params, provider, force, keys }
  *   })
  *
- * Key 来源（优先级从高到低）：
- *   1. keys: { amap, baidu, qweather } —— 小程序「我的」页前端配置（本机加密存储）
- *   2. 云函数环境变量 AMAP_KEY / BAIDU_AK / QWEATHER_KEY
+ * Key 来源：用户在小程序「我的」页绑定自己的 Key，随请求传入 event.keys；
+ * 用户请求不使用运营者的环境变量 Key。只有携带 INTERNAL_TOKEN 的
+ * 云函数间调用才回落到环境变量，供定时任务使用。
  *
- * 云函数环境变量（控制台 - 函数配置，可选）：
- *   AMAP_KEY       高德 Web 服务 Key
- *   BAIDU_AK       百度地图服务端 AK
- *   BAIDU_SK       百度地图服务端 SK（控制台开启 SN 校验时必填，只存云端）
- *   QWEATHER_KEY   和风天气 Key（可选，用于 7 天预报）
+ * 云函数环境变量（仅内部调用兜底，可选）：
+ *   AMAP_KEY / BAIDU_AK / BAIDU_SK / QWEATHER_KEY
  *   QWEATHER_HOST  和风 API Host（可选，默认 https://devapi.qweather.com）
  *   MAP_PROVIDER   默认地图商 amap | baidu（可选）
  *   INTERNAL_TOKEN 云函数间调用令牌（可选），定时任务调用时必须与之一致
@@ -67,10 +64,10 @@ const PUBLIC_MSG = {
   BAD_PARAM: '参数格式不正确',
   FORBIDDEN: '无调用权限',
   RATE_LIMITED: '请求过于频繁，请稍后再试',
-  NO_KEY: '服务暂未配置该能力',
+  NO_KEY: '请先在「我的」中绑定自己的 API Key',
   KEY_PLAT_MISMATCH: '高德 Key 平台类型不匹配，请改用「Web服务」类型的 Key',
-  BAIDU_SN: '百度 SN 校验失败：请确认云函数 BAIDU_SK 与 AK 匹配，且服务器时间同步',
-  BAIDU_AK_INVALID: '百度 AK 无效：请检查「我的」页 AK 或 BAIDU_AK 环境变量',
+  BAIDU_SN: '百度 SN 校验失败：请确认「我的」中百度 AK 与 SK 匹配',
+  BAIDU_AK_INVALID: '百度 AK 无效：请在「我的」中重新填写导航 API Key',
   BAIDU_PERMISSION: '百度 AK 权限或白名单受限：请检查控制台 IP 白名单与 SN 设置',
   BAIDU_QUOTA: '百度地图配额已用尽：请稍后重试或在控制台提升配额',
   BAIDU_FAIL: '百度地图请求失败，请检查 AK/SK、SN 签名或配额',
@@ -85,8 +82,9 @@ const PARAM_MAX_KEYS = 12
 const PARAM_MAX_STRING = 200
 const PARAM_MAX_BYTES = 2000
 const KEY_MAX_LEN = 200
+const KEY_NAMES = ['amap', 'baidu', 'baiduSk', 'qweather']
 
-/** 前端传入的 Key：仅接受字符串，长度受限，不写入日志 */
+/** 用户传入的 Key：仅接受字符串，长度受限，不写入日志 */
 function assertKeys(event) {
   const raw = event && event.keys
   if (raw === undefined || raw === null) return {}
@@ -94,7 +92,7 @@ function assertKeys(event) {
     throw upstream.fail('BAD_PARAM', 'keys 参数格式不正确')
   }
   const out = {}
-  ;['amap', 'baidu', 'qweather'].forEach((name) => {
+  KEY_NAMES.forEach((name) => {
     const value = raw[name]
     if (value === undefined || value === null || value === '') return
     if (typeof value !== 'string') throw upstream.fail('BAD_PARAM', `keys.${name} 格式不正确`)
@@ -107,14 +105,14 @@ function assertKeys(event) {
   return out
 }
 
-/** 前端 Key 优先，缺失时回退云函数环境变量（定时任务仍可用环境变量） */
-function buildUpstreamEnv(clientKeys) {
+/** 用户 Key 优先；仅内部调用回落到环境变量 */
+function buildUpstreamEnv(clientKeys, internal) {
+  const envOf = (name) => (internal ? process.env[name] || '' : '')
   return {
-    AMAP_KEY: clientKeys.amap || process.env.AMAP_KEY || '',
-    BAIDU_AK: clientKeys.baidu || process.env.BAIDU_AK || '',
-    // SK 只从云函数环境变量读取，绝不接受前端传入
-    BAIDU_SK: process.env.BAIDU_SK || '',
-    QWEATHER_KEY: clientKeys.qweather || process.env.QWEATHER_KEY || '',
+    AMAP_KEY: clientKeys.amap || envOf('AMAP_KEY'),
+    BAIDU_AK: clientKeys.baidu || envOf('BAIDU_AK'),
+    BAIDU_SK: clientKeys.baiduSk || envOf('BAIDU_SK'),
+    QWEATHER_KEY: clientKeys.qweather || envOf('QWEATHER_KEY'),
     QWEATHER_HOST: process.env.QWEATHER_HOST,
     MAP_PROVIDER: process.env.MAP_PROVIDER
   }
@@ -131,7 +129,7 @@ function auditKeys(action, openid, clientKeys, env) {
       openid: openid ? crypto.createHash('md5').update(openid).digest('hex').slice(0, 12) : 'anonymous',
       amap: sourceOf('amap', env.AMAP_KEY),
       baidu: sourceOf('baidu', env.BAIDU_AK),
-      baiduSn: env.BAIDU_SK ? 'env' : 'none',
+      baiduSn: sourceOf('baiduSk', env.BAIDU_SK),
       qweather: sourceOf('qweather', env.QWEATHER_KEY)
     })
   )
@@ -144,7 +142,7 @@ async function ensureCollection() {
   try {
     await db.createCollection(COLLECTION)
   } catch (err) {
-    // 集合已存在或当前环境不允许创建，忽略；后续读写失败会回退到直连上游
+    // 集合已存在或当前环境不允许创建，忽略；后续读写失败会直接请求上游
   }
 }
 
@@ -304,10 +302,8 @@ exports.main = async (event) => {
     }
 
     const params = assertParams(event && event.params)
-    // 多用户公开部署时可设 ALLOW_CLIENT_KEYS=0，只允许云端环境变量 Key
-    const allowClientKeys = process.env.ALLOW_CLIENT_KEYS !== '0'
-    const clientKeys = allowClientKeys ? assertKeys(event) : {}
-    const upstreamEnv = buildUpstreamEnv(clientKeys)
+    const clientKeys = assertKeys(event)
+    const upstreamEnv = buildUpstreamEnv(clientKeys, internal)
     baiduSkReady = !!upstreamEnv.BAIDU_SK
     auditKeys(action, openid, clientKeys, upstreamEnv)
 

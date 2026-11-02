@@ -4,6 +4,7 @@ const dateUtil = require('../../utils/date')
 const storage = require('../../services/storage')
 const mapService = require('../../services/map')
 const guideService = require('../../services/guide')
+const geo = require('../../utils/geo')
 
 const PREF_OPTIONS = Object.keys(decision.PREF_TAGS).map((key) => ({
   key,
@@ -29,6 +30,37 @@ const STAY_TYPE_OPTIONS = [
   { key: 'hostel', label: '青旅' }
 ]
 
+/** 自定义景点数量上限，避免把地图推荐 POI 挤出候选池 */
+const MAX_CUSTOM_SPOTS = 8
+/** 自定义景点距目的地超过该距离时提示一次（米） */
+const FAR_SPOT_WARN_METERS = 50000
+
+/** 景点名称归一化：去空白 + 小写，用于自定义点位与地图检索结果去重 */
+function normalizeSpotName(name) {
+  return String(name || '').replace(/\s+/g, '').toLowerCase()
+}
+
+/** 解析选点坐标：拒绝空串 / null / 越界 / (0,0)，避免 Number('') === 0 被当成合法坐标 */
+function parseLngLat(lng, lat) {
+  const rawLng = String(lng == null ? '' : lng).trim()
+  const rawLat = String(lat == null ? '' : lat).trim()
+  if (!rawLng || !rawLat) return null
+  const x = Number(rawLng)
+  const y = Number(rawLat)
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+  if (x < -180 || x > 180 || y < -90 || y > 90) return null
+  if (x === 0 && y === 0) return null
+  return { lng: x, lat: y }
+}
+
+/** 去重键：名称 + 坐标保留 5 位小数，同名不同位置可以共存 */
+function spotKey(name, lng, lat) {
+  const x = Number(lng)
+  const y = Number(lat)
+  const coord = Number.isFinite(x) && Number.isFinite(y) ? `${x.toFixed(5)},${y.toFixed(5)}` : ''
+  return `${normalizeSpotName(name)}|${coord}`
+}
+
 Page({
   data: {
     cityOptions: [],
@@ -36,6 +68,8 @@ Page({
     guideDraft: null,
     guideDest: null,
     spots: [],
+    customSpots: [],
+    spotInput: '',
     spotsLoading: false,
     spotError: '',
     spotHint: '',
@@ -70,7 +104,6 @@ Page({
     party: 2,
     hasElder: false,
     hasChild: false,
-    sourceText: '云开发实时数据',
     history: []
   },
 
@@ -124,7 +157,36 @@ Page({
     // 让仍在进行的旧请求失效，避免切城市后回填上一座城市的景点
     this._spotToken = (this._spotToken || 0) + 1
     this._spotLoadingKey = ''
-    this.setData({ spots: [], selectedSpotCount: 0, spotsLoading: false, spotError: '', spotHint: '' })
+    this._baseSpots = []
+    this._farSpotWarned = false
+    this.setData({
+      spots: [],
+      customSpots: [],
+      spotInput: '',
+      selectedSpotCount: 0,
+      spotsLoading: false,
+      spotError: '',
+      spotHint: ''
+    })
+  },
+
+  /** 自定义点位排在最前，再拼接地图推荐；同名同坐标只保留一条，避免刷新后重复 */
+  composeSpots(baseSpots, customSpots) {
+    const seen = {}
+    const merged = []
+    ;(customSpots || []).forEach((spot) => {
+      const key = spotKey(spot.name, spot.lng, spot.lat)
+      if (!normalizeSpotName(spot.name) || seen[key]) return
+      seen[key] = true
+      merged.push(spot)
+    })
+    ;(baseSpots || []).forEach((spot) => {
+      const key = spotKey(spot.name, spot.lng, spot.lat)
+      if (!normalizeSpotName(spot.name) || seen[key]) return
+      seen[key] = true
+      merged.push(spot)
+    })
+    return merged
   },
 
   /** 热门景点推荐：按目的地与兴趣偏好检索地图真实 POI，默认全部保留 */
@@ -143,7 +205,7 @@ Page({
     // 偏好变更后重新筛选时，保留用户已经取消的景点选择
     const deselected = {}
     ;(this.data.spots || []).forEach((spot) => {
-      if (!spot.selected) deselected[String(spot.name || '').replace(/\s+/g, '')] = true
+      if (!spot.selected) deselected[spotKey(spot.name, spot.lng, spot.lat)] = true
     })
     const token = (this._spotToken = (this._spotToken || 0) + 1)
     this._spotLoadingKey = requestKey
@@ -167,12 +229,14 @@ Page({
         }
         const formatted = spots.map((spot) => ({
           ...spot,
-          selected: !deselected[String(spot.name || '').replace(/\s+/g, '')]
+          selected: !deselected[spotKey(spot.name, spot.lng, spot.lat)]
         }))
+        this._baseSpots = formatted
+        const composed = this.composeSpots(formatted, this.data.customSpots)
         this._spotLoadingKey = ''
         this.setData({
-          spots: formatted,
-          selectedSpotCount: formatted.filter((spot) => spot.selected).length,
+          spots: composed,
+          selectedSpotCount: composed.filter((spot) => spot.selected).length,
           spotsLoading: false,
           spotHint
         })
@@ -181,9 +245,11 @@ Page({
         if (token !== this._spotToken) return
         this._spotLoadingKey = ''
         console.warn('[index] 热门景点推荐失败', err && err.message)
+        this._baseSpots = []
+        const composed = this.composeSpots([], this.data.customSpots)
         this.setData({
-          spots: [],
-          selectedSpotCount: 0,
+          spots: composed,
+          selectedSpotCount: composed.filter((spot) => spot.selected).length,
           spotsLoading: false,
           spotError: (err && err.message) || '地图数据暂不可用'
         })
@@ -201,22 +267,148 @@ Page({
 
   toggleSpot(e) {
     const index = Number(e.currentTarget.dataset.index)
-    if (!Number.isFinite(index) || !this.data.spots[index]) return
-    const spots = this.data.spots.map((spot, i) =>
-      i === index ? { ...spot, selected: !spot.selected } : spot
-    )
+    const spot = this.data.spots[index]
+    if (!spot) return
+    const selected = !spot.selected
+    const key = spotKey(spot.name, spot.lng, spot.lat)
+    let customSpots = this.data.customSpots
+    let baseSpots = this._baseSpots || []
+    if (spot.custom) {
+      customSpots = customSpots.map((item) => (item.id === spot.id ? { ...item, selected } : item))
+    } else {
+      baseSpots = baseSpots.map((item) =>
+        item.id === spot.id || spotKey(item.name, item.lng, item.lat) === key ? { ...item, selected } : item
+      )
+    }
+    this._baseSpots = baseSpots
+    const spots = this.composeSpots(baseSpots, customSpots)
     this.setData({
       spots,
-      selectedSpotCount: spots.filter((spot) => spot.selected).length
+      customSpots,
+      selectedSpotCount: spots.filter((item) => item.selected).length
+    })
+  },
+
+  onSpotInput(e) {
+    this.setData({ spotInput: e.detail.value })
+  },
+
+  /** 自定义景点：地图选点拿到真实坐标后加入推荐列表，名称优先用用户输入 */
+  openSpotPicker() {
+    wx.chooseLocation({
+      success: (res) => this.addCustomSpot(res),
+      fail: (err) => {
+        const cancelled = err && /cancel/i.test(err.errMsg || '')
+        wx.showToast({ title: cancelled ? '已取消选点' : '未获得定位权限', icon: 'none' })
+      }
+    })
+  },
+
+  addCustomSpot(res) {
+    const coords = parseLngLat(res && res.longitude, res && res.latitude)
+    if (!coords) {
+      wx.showToast({ title: '选点坐标无效，请重新选择', icon: 'none' })
+      return
+    }
+    const typed = String(this.data.spotInput || '').trim()
+    const name = typed || String((res && res.name) || (res && res.address) || '').trim() || '自定义点位'
+    const address = String((res && res.address) || '').trim()
+    if ((this.data.customSpots || []).length >= MAX_CUSTOM_SPOTS) {
+      wx.showToast({ title: `自定义景点最多 ${MAX_CUSTOM_SPOTS} 个`, icon: 'none' })
+      return
+    }
+    const key = spotKey(name, coords.lng, coords.lat)
+    const duplicated = (this.data.customSpots || []).some(
+      (item) => spotKey(item.name, item.lng, item.lat) === key
+    )
+    if (duplicated) {
+      wx.showToast({ title: '该地点已在列表中', icon: 'none' })
+      return
+    }
+    const anchor = this.destAnchor()
+    if (anchor && !this._farSpotWarned) {
+      const meters = geo.haversine(anchor, coords)
+      if (meters > FAR_SPOT_WARN_METERS) {
+        this._farSpotWarned = true
+        wx.showModal({
+          title: '景点距离较远',
+          content: `该点距目的地约 ${Math.round(meters / 1000)} 公里，加入后可能拉长赶路时间。`,
+          confirmText: '仍要添加',
+          cancelText: '取消',
+          success: (result) => {
+            if (result.confirm) this.appendCustomSpot(name, address, coords)
+          }
+        })
+        return
+      }
+    }
+    this.appendCustomSpot(name, address, coords)
+  },
+
+  /** 目的地坐标：优先用攻略页带来的选点，否则用当前地图推荐点的中心 */
+  destAnchor() {
+    const fromDraft = parseLngLat(
+      this.data.guideDest && this.data.guideDest.lng,
+      this.data.guideDest && this.data.guideDest.lat
+    )
+    if (fromDraft) return fromDraft
+    let lng = 0
+    let lat = 0
+    let count = 0
+    ;(this._baseSpots || []).forEach((spot) => {
+      const point = parseLngLat(spot.lng, spot.lat)
+      if (!point) return
+      lng += point.lng
+      lat += point.lat
+      count += 1
+    })
+    if (!count) return null
+    return { lng: lng / count, lat: lat / count }
+  },
+
+  /** 校验通过后写入自定义点位，并刷新列表 */
+  appendCustomSpot(name, address, coords) {
+    this._customSeq = (this._customSeq || 0) + 1
+    const spot = {
+      id: `custom_${Date.now()}_${this._customSeq}`,
+      name,
+      category: '自定义',
+      rating: 0,
+      ratingText: '地图选点',
+      lng: coords.lng,
+      lat: coords.lat,
+      address,
+      tags: [],
+      custom: true,
+      selected: true
+    }
+    const customSpots = (this.data.customSpots || []).concat(spot)
+    const spots = this.composeSpots(this._baseSpots || [], customSpots)
+    this.setData({
+      customSpots,
+      spots,
+      spotInput: '',
+      selectedSpotCount: spots.filter((item) => item.selected).length
+    })
+    wx.showToast({ title: `已添加：${name}`, icon: 'none' })
+  },
+
+  removeSpot(e) {
+    const index = Number(e.currentTarget.dataset.index)
+    const spot = this.data.spots[index]
+    if (!spot || !spot.custom) return
+    const customSpots = (this.data.customSpots || []).filter((item) => item.id !== spot.id)
+    const spots = this.composeSpots(this._baseSpots || [], customSpots)
+    this.setData({
+      customSpots,
+      spots,
+      selectedSpotCount: spots.filter((item) => item.selected).length
     })
   },
 
   refreshSettings() {
-    const settings = storage.getSettings()
-    const sourceMap = { cloud: '云开发实时数据', direct: '直连地图 API' }
     const origin = this.data.origin
     this.setData({
-      sourceText: sourceMap[settings.dataSource] || '云开发实时数据',
       originLabel: origin
         ? `${origin.name} · ${Number(origin.lng).toFixed(2)}, ${Number(origin.lat).toFixed(2)}`
         : '未设置 · 默认以目的地市中心为起点'
@@ -241,6 +433,8 @@ Page({
   pickCity(e) {
     const name = e.currentTarget.dataset.name
     if (this.data.guideDraft && name !== this.data.guideDraft.city) this.clearGuideSelection()
+    // 换城市后旧的自定义点位坐标不再适用，一并清掉
+    if (String(this.data.destName || '').trim() !== name) this.resetSpots()
     this.setData({ destName: name }, () => this.loadSpots())
   },
 
@@ -481,6 +675,8 @@ Page({
       }),
       preferredSpots: spots.filter((spot) => spot.selected).map((spot) => spot.name),
       excludedSpots: spots.filter((spot) => !spot.selected).map((spot) => spot.name),
+      preferredKeys: spots.filter((spot) => spot.selected).map((spot) => spotKey(spot.name, spot.lng, spot.lat)),
+      excludedKeys: spots.filter((spot) => !spot.selected).map((spot) => spotKey(spot.name, spot.lng, spot.lat)),
       startDate: this.data.startDate,
       endDate: this.data.endDate,
       days,

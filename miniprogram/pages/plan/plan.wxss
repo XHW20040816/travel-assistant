@@ -139,7 +139,7 @@
   vertical-align: top;
   margin-right: 18rpx;
   padding: 24rpx;
-  border-radius: 22rpx;
+  border-radius: 24rpx;
   background: #FFFFFF;
   border: 1rpx solid #E6EBF4;
   box-sizing: border-box;
@@ -149,7 +149,7 @@
 .variant--active {
   border-color: #2E6BE6;
   background: #F5F8FF;
-  box-shadow: 0 10rpx 26rpx rgba(46, 107, 230, 0.12);
+  box-shadow: 0 12rpx 28rpx rgba(46, 107, 230, 0.12);
 }
 
 .variant__top {
@@ -487,7 +487,7 @@
 }
 
 .day-foot {
-  background: #F8FAFD;
+  background: #F7F9FD;
   border-radius: 16rpx;
   padding: 18rpx 20rpx;
   margin-top: 4rpx;

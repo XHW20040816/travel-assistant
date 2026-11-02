@@ -94,7 +94,7 @@ Page({
       console.warn('[plan] generate failed', err)
       this.setData({
         loading: false,
-        error: (err && err.message) || '规划失败，请检查数据源配置',
+        error: (err && err.message) || '规划失败，请稍后重试',
         steps: STEPS.map((label) => ({ label, state: 'pending' }))
       })
     }
@@ -160,11 +160,16 @@ Page({
         : Array.isArray(req.hotSpots)
           ? req.hotSpots
           : []
-      const excluded = Array.isArray(req.excludedSpots) ? req.excludedSpots : []
+      const excludedNames = Array.isArray(req.excludedSpots) ? req.excludedSpots : []
+      // 新请求按「名称 + 坐标」判断排除，避免同名不同位置的点位互相影响
+      const useKeys = Array.isArray(req.excludedKeys)
+      const excludedKeys = useKeys ? req.excludedKeys : []
       const spotChips = pool.map((spot) => ({
         ...spot,
         ratingText: Number(spot.rating) > 0 ? Number(spot.rating).toFixed(1) : '暂无评分',
-        active: excluded.indexOf(spot.name) < 0
+        active: useKeys
+          ? excludedKeys.indexOf(planService.spotKey(spot.name, spot.lng, spot.lat)) < 0
+          : excludedNames.indexOf(spot.name) < 0
       }))
 
       this.setData({
@@ -241,6 +246,12 @@ Page({
     })
     base.preferredSpots = chips.filter((spot) => spot.active).map((spot) => spot.name)
     base.excludedSpots = chips.filter((spot) => !spot.active).map((spot) => spot.name)
+    base.preferredKeys = chips
+      .filter((spot) => spot.active)
+      .map((spot) => planService.spotKey(spot.name, spot.lng, spot.lat))
+    base.excludedKeys = chips
+      .filter((spot) => !spot.active)
+      .map((spot) => planService.spotKey(spot.name, spot.lng, spot.lat))
     wx.showToast({ title: '正在按新的选择重新规划', icon: 'none' })
     this.generate(base)
   },

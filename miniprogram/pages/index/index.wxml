@@ -5,7 +5,7 @@
     <view class="hero__sub">融合高德/百度路径与实时路况、逐日天气与穿衣建议，结合攻略要点做多方案对比。</view>
     <view class="hero__meta">
       <text class="hero__dot"></text>
-      <text>数据源：{{sourceText}}</text>
+      <text>实时获取景点、天气与路线数据</text>
     </view>
   </view>
 
@@ -85,9 +85,21 @@
         </view>
       </view>
       <view wx:if="{{spotHint}}" class="tiny spot-hint">{{spotHint}}</view>
+      <view class="spot-add">
+        <input
+          class="input spot-add__input"
+          value="{{spotInput}}"
+          bindinput="onSpotInput"
+          bindconfirm="openSpotPicker"
+          confirm-type="search"
+          placeholder="想去的其他地方？输入名称再地图选点"
+        />
+        <view class="spot-add__btn" bindtap="openSpotPicker">地图选点</view>
+      </view>
+      <view class="tiny spot-add__note">自定义点位会置顶并参与本次规划，切换目的地后清空</view>
       <view wx:if="{{spotsLoading}}" class="tiny">正在按兴趣偏好筛选热门景点…</view>
-      <view wx:elif="{{spotError}}" class="tiny spot-error">景点推荐暂不可用：{{spotError}}</view>
-      <view wx:elif="{{spots.length}}" class="spot-list">
+      <view wx:if="{{spotError}}" class="tiny spot-error">景点推荐暂不可用：{{spotError}}</view>
+      <view wx:if="{{spots.length}}" class="spot-list">
         <view
           wx:for="{{spots}}"
           wx:key="id"
@@ -97,13 +109,18 @@
         >
           <view class="spot-check">{{item.selected ? '✓' : ''}}</view>
           <view class="spot-main">
-            <view class="spot-name">{{item.name}}</view>
+            <view class="spot-name">
+              {{item.name}}
+              <text wx:if="{{item.custom}}" class="spot-tag">自定义</text>
+            </view>
             <view class="tiny">{{item.category}} · {{item.ratingText}}{{item.address ? ' · ' + item.address : ''}}</view>
           </view>
+          <text wx:if="{{item.custom}}" class="spot-remove" data-index="{{index}}" catchtap="removeSpot">移除</text>
           <text class="spot-state {{item.selected ? 'spot-state--on' : ''}}">{{item.selected ? '想去' : '不去'}}</text>
         </view>
       </view>
-      <view wx:else class="tiny">{{destName ? '暂无可推荐的景点，可点「刷新」重试' : '填写目的地后，这里会按兴趣偏好推荐热门景点'}}</view>
+      <view wx:if="{{!spotsLoading && !spots.length && spotError}}" class="tiny">可先用上方「地图选点」添加自定义点位，或点「刷新」重试</view>
+      <view wx:if="{{!spotsLoading && !spots.length && !spotError}}" class="tiny">{{destName ? '暂无可推荐的景点，可点「刷新」重试' : '填写目的地后，这里会按兴趣偏好推荐热门景点'}}</view>
       <view class="tiny spot-note">默认全部保留，点一下即可取消不想去的景点；规划时优先安排保留的景点，并排除取消的景点。</view>
     </view>
 

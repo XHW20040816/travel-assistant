@@ -16,8 +16,7 @@ App({
 
   initCloud() {
     const settings = this.globalData.settings
-    const useCloud = settings.dataSource === 'cloud'
-    if (!useCloud || !wx.cloud) return
+    if (!wx.cloud) return
     const env = settings.cloudEnv || config.cloudEnv
     try {
       wx.cloud.init({

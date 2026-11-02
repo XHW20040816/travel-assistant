@@ -41,6 +41,14 @@
     </view>
   </view>
 
+  <view wx:if="{{needSetup}}" class="card notice notice--warn">
+    <view class="notice__title">还没有绑定大模型 Key</view>
+    <view class="notice__text">攻略速览使用你自己的大模型额度，请先到「我的」填写 API Key 与模型名称。</view>
+    <view class="notice__actions">
+      <view class="btn-mini" bindtap="goMine">去绑定</view>
+    </view>
+  </view>
+
   <view class="card">
     <view class="section-title">想去哪里</view>
     <view class="city-input-row">
@@ -90,14 +98,6 @@
     <view class="tiny">AI 速览按所选平台的口径整理；小程序不抓取站内内容，链接为平台搜索入口，切换平台会重新生成并缓存 24 小时。</view>
   </view>
 
-  <view wx:if="{{!llmReady && dataSource === 'cloud' && !error}}" class="card notice notice--info">
-    <view class="notice__title">还没配置攻略大模型</view>
-    <view class="notice__text">在「我的 - 攻略大模型」填写 DeepSeek Key 并保存，输入目的地后即可生成攻略速览。</view>
-    <view class="notice__actions">
-      <view class="btn-mini" bindtap="goMine">去配置 Key</view>
-    </view>
-  </view>
-
   <view wx:if="{{!city && !loading && !error}}" class="card empty">
     输入目的地并点「生成速览」，查看 AI 参考攻略
   </view>
@@ -107,7 +107,6 @@
     <view wx:if="{{errorHint}}" class="notice__text">{{errorHint}}</view>
     <view class="notice__actions">
       <view class="btn-mini" bindtap="refresh">重试</view>
-      <view wx:if="{{needSetup}}" class="btn-mini" bindtap="goMine">去配置</view>
     </view>
   </view>
 
@@ -150,7 +149,6 @@
     <view class="source-line">2. 热门景点推荐在规划页，按你勾选的兴趣偏好筛选地图上的真实 POI；取消勾选只影响本次规划，可随时回到方案页重新选择。</view>
     <view class="source-line">3. 小程序内不抓取平台内容；复制「平台搜索链接」后，可到浏览器或对应 App 查看真实笔记与视频。</view>
     <view class="source-line">4. 目的地由你输入或地图选点，攻略不受当前行程限制；点位营业与预约信息以官方公告为准。</view>
-    <view class="source-line">5. 想更换模型或清除 Key，可到「我的 - 攻略大模型」调整。</view>
   </view>
 
   <view class="safe-bottom"></view>

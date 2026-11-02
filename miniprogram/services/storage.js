@@ -22,28 +22,14 @@ const DEFAULT_LLM = {
 }
 
 const DEFAULT_SETTINGS = {
-  dataSource: config.dataSource,
   mapProvider: config.mapProvider,
   cloudEnv: config.cloudEnv,
   cloudFn: config.cloudFn,
   qweatherHost: config.qweatherHost,
   keys: Object.assign({}, config.keys),
-  guideApiBase: config.guideApiBase,
   guidePlatform: config.defaultGuidePlatform,
   guidePlatformCustom: '',
   defaultCity: Object.assign({}, config.defaultCity)
-}
-
-/** 仅开发版 / 体验版允许直连调试；正式版强制 cloud */
-function isDirectAllowed() {
-  try {
-    if (typeof wx === 'undefined' || typeof wx.getAccountInfoSync !== 'function') return false
-    const info = wx.getAccountInfoSync()
-    const version = info && info.miniProgram ? info.miniProgram.envVersion : ''
-    return version === 'develop' || version === 'trial'
-  } catch (err) {
-    return false
-  }
 }
 
 function getSettings() {
@@ -56,10 +42,11 @@ function getSettings() {
   if (!saved || typeof saved !== 'object') saved = null
   const base = { ...DEFAULT_SETTINGS, ...(saved || {}) }
 
-  // 旧版本曾把 Key 明文持久化到本地，读取时迁移为加密存储并清除明文副本；
-  // 云开发环境等参数已不再由前端暴露，一并清理历史残留
+  // 旧版本曾把 Key 明文持久化到本地，读取时迁移为加密存储并清除明文副本
+  if (saved && saved.keys && typeof saved.keys === 'object') {
+    saveMapKeys(saved.keys)
+  }
   if (saved && (saved.keys || saved.cloudEnv || saved.cloudFn || saved.guideApiBase)) {
-    if (saved.keys && typeof saved.keys === 'object') saveMapKeys(saved.keys)
     try {
       const cleaned = { ...saved }
       delete cleaned.keys
@@ -72,16 +59,10 @@ function getSettings() {
     }
   }
 
-  // 旧版本可能是 demo（已移除）或正式版下的 direct，统一回落到 cloud
-  let dataSource = base.dataSource
-  if (dataSource === 'demo' || (dataSource === 'direct' && !isDirectAllowed())) dataSource = 'cloud'
-
   return {
     ...base,
-    dataSource,
     cloudEnv: config.cloudEnv,
     cloudFn: config.cloudFn,
-    guideApiBase: config.guideApiBase,
     keys: getMapKeys(),
     defaultCity: { ...DEFAULT_SETTINGS.defaultCity, ...((saved && saved.defaultCity) || {}) }
   }
@@ -97,15 +78,12 @@ function saveSettings(patch) {
     ...patch,
     keys: getMapKeys()
   }
-  if (next.dataSource === 'demo') next.dataSource = 'cloud'
-  if (next.dataSource === 'direct' && !isDirectAllowed()) next.dataSource = 'cloud'
 
   // 落盘时剔除 Key，Key 只以密文形式保存在独立的 Storage 项
   const persisted = { ...next }
   delete persisted.keys
   delete persisted.cloudEnv
   delete persisted.cloudFn
-  delete persisted.guideApiBase
   try {
     wx.setStorageSync(KEYS.SETTINGS, persisted)
   } catch (err) {
@@ -114,7 +92,7 @@ function saveSettings(patch) {
   return next
 }
 
-/** 读取地图/天气 Key（解密后返回，仅用于内存） */
+/** 读取导航/天气 Key（解密后返回，仅用于内存） */
 function getMapKeys() {
   const fallback = { ...DEFAULT_SETTINGS.keys }
   try {
@@ -127,42 +105,37 @@ function getMapKeys() {
     return {
       amap: String(parsed.amap || ''),
       baidu: String(parsed.baidu || ''),
+      baiduSk: String(parsed.baiduSk || ''),
       qweather: String(parsed.qweather || '')
     }
   } catch (err) {
-    console.warn('[settings] 地图 Key 解密失败', err && err.message)
+    console.warn('[settings] Key 解密失败', err && err.message)
     return fallback
   }
 }
 
-/** 加密保存地图/天气 Key；全部为空时清除 */
+/** 加密保存导航/天气 Key；全部为空时清除 */
 function saveMapKeys(patch) {
   const next = {
     amap: String((patch && patch.amap) || '').trim(),
     baidu: String((patch && patch.baidu) || '').trim(),
+    baiduSk: String((patch && patch.baiduSk) || '').trim(),
     qweather: String((patch && patch.qweather) || '').trim()
   }
   try {
-    if (!next.amap && !next.baidu && !next.qweather) {
+    if (!next.amap && !next.baidu && !next.baiduSk && !next.qweather) {
       wx.removeStorageSync(KEYS.MAP)
     } else {
       wx.setStorageSync(KEYS.MAP, cipher.encryptText(JSON.stringify(next)))
     }
   } catch (err) {
-    console.warn('[settings] 地图 Key 保存失败', err && err.message)
+    console.warn('[settings] Key 保存失败', err && err.message)
     return null
   }
   return next
 }
 
-function getSourceMode() {
-  return getSettings().dataSource || 'cloud'
-}
-
-/**
- * 攻略大模型配置：解密后返回，仅用于内存，不写入明文 Storage
- * @returns {{deepseek:String, model:String}|null}
- */
+/** 读取用户自己的大模型配置（解密后仅用于内存） */
 function getLlmConfig() {
   try {
     const blob = wx.getStorageSync(KEYS.LLM)
@@ -181,7 +154,7 @@ function getLlmConfig() {
   }
 }
 
-/** 加密保存攻略大模型配置；DeepSeek Key 为空时视为清除 */
+/** 加密保存大模型配置；Key 为空时视为清除 */
 function saveLlmConfig(patch) {
   const next = {
     deepseek: String((patch && patch.deepseek) || '').trim(),
@@ -332,9 +305,10 @@ function cacheRead(key) {
   }
 }
 
-function cacheWrite(key, data, ttl) {
+function cacheWrite(key, data, ttl, provider) {
   const record = {
     data,
+    provider: provider || '',
     fetchedAt: Date.now(),
     expireAt: Date.now() + ttl
   }
@@ -373,8 +347,6 @@ module.exports = {
   DEFAULT_LLM,
   getSettings,
   saveSettings,
-  isDirectAllowed,
-  getSourceMode,
   getMapKeys,
   saveMapKeys,
   getLlmConfig,

@@ -1,5 +1,5 @@
 page {
-  background: #F4F6FB;
+  background: linear-gradient(180deg, #EDF2FC 0%, #F4F6FB 380rpx, #F4F6FB 100%);
   color: #1B2333;
   font-size: 28rpx;
   line-height: 1.5;
@@ -14,7 +14,7 @@ page {
   background: #FFFFFF;
   border-radius: 24rpx;
   padding: 28rpx;
-  box-shadow: 0 8rpx 30rpx rgba(28, 45, 80, 0.06);
+  box-shadow: 0 10rpx 34rpx rgba(28, 45, 80, 0.05);
   margin-bottom: 24rpx;
 }
 
@@ -37,7 +37,7 @@ page {
   width: 8rpx;
   height: 28rpx;
   border-radius: 4rpx;
-  background: #2E6BE6;
+  background: linear-gradient(180deg, #4C8DF6, #2E6BE6);
   margin-right: 14rpx;
   vertical-align: -4rpx;
 }
@@ -69,9 +69,9 @@ page {
 
 .chip {
   margin: 8rpx;
-  padding: 12rpx 24rpx;
+  padding: 14rpx 26rpx;
   border-radius: 999rpx;
-  background: #F0F3F9;
+  background: #F3F5FA;
   color: #43516B;
   font-size: 24rpx;
   border: 1rpx solid transparent;
@@ -83,6 +83,7 @@ page {
   color: #2E6BE6;
   border-color: #2E6BE6;
   font-weight: 600;
+  box-shadow: 0 6rpx 14rpx rgba(46, 107, 230, 0.12);
 }
 
 .btn-primary {
@@ -93,7 +94,8 @@ page {
   font-weight: 600;
   padding: 24rpx 0;
   text-align: center;
-  box-shadow: 0 12rpx 26rpx rgba(46, 107, 230, 0.28);
+  letter-spacing: 1rpx;
+  box-shadow: 0 14rpx 30rpx rgba(46, 107, 230, 0.26);
 }
 
 .btn-primary--disabled {
@@ -102,21 +104,22 @@ page {
 }
 
 .btn-ghost {
-  border: 1rpx solid #D8DFEA;
+  border: 1rpx solid #DCE3EE;
   color: #43516B;
   border-radius: 999rpx;
   font-size: 26rpx;
-  padding: 18rpx 0;
+  padding: 20rpx 0;
   text-align: center;
   background: #FFFFFF;
 }
 
 .btn-mini {
-  background: #F0F3F9;
+  background: #EAF0FF;
   color: #2E6BE6;
-  border-radius: 12rpx;
+  border-radius: 999rpx;
   font-size: 24rpx;
-  padding: 10rpx 20rpx;
+  font-weight: 600;
+  padding: 12rpx 26rpx;
   margin-left: 12rpx;
   line-height: 1.4;
 }

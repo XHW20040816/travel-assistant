@@ -3,7 +3,6 @@
  * 对外统一返回标准化结构，屏蔽高德/百度差异
  */
 const api = require('./api')
-const storage = require('./storage')
 const config = require('../config/index')
 const geo = require('../utils/geo')
 
@@ -281,7 +280,6 @@ async function geocode(keyword, city) {
  * focusKeywords 用于把用户在规划页勾选的景点单独检索一次，并在结果中标记 focus
  */
 async function searchPoi(options) {
-  const settings = storage.getSettings()
   const { cityName, adcode, center, prefs = [], limit = config.limits.maxPoiCandidates } = options
   const focusKeywords = (options.focusKeywords || []).map(String).filter(Boolean).slice(0, 4)
 
@@ -292,7 +290,6 @@ async function searchPoi(options) {
   // 用户勾选的景点必须进入候选池，单独查一次比依赖“热门景点”排序更可靠
   if (focusKeywords.length) queries.push({ keywords: focusKeywords.join('|') })
 
-  const provider = settings.mapProvider
   const tasks = queries.map((query) => () => {
     const params = {
       keywords: query.keywords,
@@ -318,6 +315,7 @@ async function searchPoi(options) {
       return
     }
     const { data, meta } = result.value
+    const provider = meta.provider || 'amap'
     lastFetchedAt = Math.max(lastFetchedAt, meta.fetchedAt || 0)
     const list = provider === 'baidu' ? (data.results || []) : (data.pois || [])
     if (provider === 'amap' && data.status !== '1') return
@@ -334,15 +332,15 @@ async function searchPoi(options) {
   })
 
   if (!merged.length) {
-    // 所有查询都失败时，优先暴露真实原因（限流 / 未配置 Key），不要一律报“未检索到景点”
+    // 所有查询都失败时，优先暴露真实原因（限流 / 服务未开通），不要一律报“未检索到景点”
     const first = failures[0]
     if (first && first.code === 'RATE_LIMITED') {
       throw api.makeError('RATE_LIMITED', '景点检索过于频繁，请稍后再试')
     }
     if (first && first.code === 'NO_KEY') {
-      throw api.makeError('NO_KEY', first.message || '未配置地图服务 Key')
+      throw api.makeError('NO_KEY', '景点服务暂时不可用，请稍后重试')
     }
-    throw api.makeError('NO_POI', '未检索到目的地景点，请更换城市或检查 Key 配置')
+    throw api.makeError('NO_POI', '未检索到目的地景点，请更换城市或稍后重试')
   }
 
   const focusSet = focusKeywords.map(normalizeName).filter(Boolean)

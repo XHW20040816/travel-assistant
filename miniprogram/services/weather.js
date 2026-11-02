@@ -7,7 +7,6 @@
  *  - 超出预报范围的日期：标注「暂无预报」，不使用气候常年代填，也不做穿衣推测
  */
 const api = require('./api')
-const storage = require('./storage')
 const dateUtil = require('../utils/date')
 
 function rainProbFromText(text) {
@@ -135,7 +134,6 @@ function missingDay(dateStr, fetchedAt) {
  */
 async function getForecast(options) {
   const { cityName, adcode, lat, lng, startDate, days, force } = options
-  const settings = storage.getSettings()
   const dates = dateUtil.dateList(startDate, days)
 
   const coordinates = resolveCoords(lat, lng)
@@ -150,7 +148,7 @@ async function getForecast(options) {
   } catch (err) {
     caps = null
   }
-  const qweatherReady = caps ? !!caps.qweather : !!settings.keys.qweather
+  const qweatherReady = !!(caps && caps.qweather)
 
   if (qweatherReady && coordinates) {
     try {

@@ -1,13 +1,10 @@
 /**
  * 全局配置
  * ------------------------------------------------------------------
- * dataSource 取值：
- *   cloud  ：走微信云开发云函数 travelApi，Key 存在云函数环境变量中，最安全（默认）
- *   direct ：小程序直连高德开放平台，仅开发版 / 体验版可用（正式版自动降级为 cloud）；
- *            百度 SN 签名依赖服务端 SK，不提供直连，一律走云函数
+ * 小程序固定使用云开发：所有上游请求由云函数 travelApi / guideProxy 代理。
+ * 导航、天气、大模型 Key 由用户在小程序「我的」页自行绑定，
+ * 本机加密保存，并在每次请求时随调用传给云函数，不写入云函数环境变量。
  *
- * 云函数 travelApi 环境变量（云开发控制台 - 函数配置）：
- *   AMAP_KEY / BAIDU_AK / BAIDU_SK（开启 SN 校验时必填）/ QWEATHER_KEY，可选 MAP_PROVIDER=amap|baidu
  * cloudEnv / cloudFn 为内置配置，不在前端暴露，也不允许本地覆盖。
  *
  * 高德开放平台：https://console.amap.com/dev/key/app  （Web服务 Key）
@@ -16,7 +13,6 @@
  */
 const APP_CONFIG = {
   version: '1.0.0',
-  dataSource: 'cloud',
   cloudEnv: 'cloud1-d0ghx8o605fb9fef7',
   cloudFn: 'travelApi',
   guideFn: 'guideProxy',
@@ -34,16 +30,15 @@ const APP_CONFIG = {
   guidePlatformCustomMaxLen: 12,
   // 和风天气新版专属 API Host（控制台 - 设置中查看，形如 https://xxx.qweatherapi.com）
   qweatherHost: 'https://devapi.qweather.com',
+  // 导航服务默认地图商；用户可在「我的」切换
   mapProvider: 'amap', // amap | baidu
+  // 用户自己的 Key 默认留空，全部在「我的」页绑定
   keys: {
     amap: '',
     baidu: '',
+    baiduSk: '',
     qweather: ''
   },
-  // 可选：自建攻略聚合服务（小红书/抖音无官方开放接口，需自有合规数据源）
-  // 必须为 https，并把域名加入下方白名单后才会被请求
-  guideApiBase: '',
-  guideApiAllowHosts: [],
   // 缓存有效期（毫秒），越实时越短
   cacheTTL: {
     geocode: 30 * 24 * 3600 * 1000,

@@ -15,7 +15,7 @@
   padding: 14rpx 18rpx;
   margin-right: 14rpx;
   border-radius: 16rpx;
-  background: #F6F8FC;
+  background: #F5F7FB;
   border: 1rpx solid transparent;
 }
 
@@ -186,7 +186,7 @@
 .mode {
   font-size: 21rpx;
   color: #55627A;
-  background: #F4F6FB;
+  background: #F5F7FB;
   border-radius: 999rpx;
   padding: 4rpx 16rpx;
   margin-right: 10rpx;

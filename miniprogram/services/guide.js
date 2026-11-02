@@ -167,25 +167,22 @@ function isValidLive(guide) {
 /** 把 cloud.callFunction 的底层错误翻译成页面可读的提示 */
 function describeCloudError(err) {
   const msg = String((err && (err.errMsg || err.message)) || '')
-  const matched = msg.match(/errCode:\s*(-?\d+)/)
-  const errCode = matched ? matched[1] : ''
   if (/timeout|-504003|timed out/i.test(msg)) {
-    return { code: 'CLOUD_TIMEOUT', message: '云函数调用超时：请把 guideProxy 超时时间调到 60 秒' }
+    return { code: 'CLOUD_TIMEOUT', message: '攻略生成超时，请稍后重试' }
   }
   if (msg.indexOf('-601034') >= 0 || /cloud.*(not.*open|未开通)/i.test(msg)) {
-    return { code: 'CLOUD_NOT_OPEN', message: '云开发未开通：请先在开发者工具中开通云开发' }
+    return { code: 'CLOUD_NOT_OPEN', message: '攻略服务暂未开通，请稍后重试' }
   }
   if (msg.indexOf('-604100') >= 0 || /env.*(not exist|invalid)|环境.*不存在/i.test(msg)) {
-    return { code: 'CLOUD_ENV_INVALID', message: '云环境不可用：请检查「我的」页云环境 ID' }
+    return { code: 'CLOUD_ENV_INVALID', message: '攻略服务配置异常，请稍后重试' }
   }
   if (msg.indexOf('-501000') >= 0 || /FunctionName|not found|不存在/i.test(msg)) {
-    return { code: 'CLOUD_FN_MISSING', message: '云函数 guideProxy 未部署或依赖缺失：请用「云端安装依赖」重新部署' }
+    return { code: 'CLOUD_FN_MISSING', message: '攻略服务暂不可用，请稍后重试' }
   }
   if (/cloud\.init|not initialized|未初始化|Cloud API isn't enabled/i.test(msg)) {
-    return { code: 'CLOUD_NOT_INIT', message: '云开发未初始化：请把数据源切回「云开发」后重启小程序' }
+    return { code: 'CLOUD_NOT_INIT', message: '服务初始化失败，请重启小程序后重试' }
   }
-  const brief = msg.replace(/^cloud\.callFunction:fail\s*/i, '').slice(0, 90)
-  return { code: 'CLOUD_FAIL', message: `云函数调用失败${errCode ? `（${errCode}）` : ''}${brief ? `：${brief}` : ''}` }
+  return { code: 'CLOUD_FAIL', message: '攻略服务暂时不可用，请稍后重试' }
 }
 
 function emptyLive(error) {
@@ -201,19 +198,20 @@ function emptyLive(error) {
 
 /**
  * 调用云函数 guideProxy（DeepSeek 生成攻略速览 + 平台搜索入口）
- * 优先使用「我的」页前端配置（加密存储）的解密结果，未配置时由云函数回退环境变量；
- * 返回结构化结果，失败时带 error 供页面区分「未配置 / 超时 / 无结果」等场景
+ * 大模型 Key 由用户在「我的」页绑定，本机加密保存，随本次请求传给云函数；
+ * 返回结构化结果，失败时带 error 供页面区分「超时 / 无结果」等场景
  */
 function fetchCloud(city, options) {
   const settings = storage.getSettings()
-  if (settings.dataSource !== 'cloud' || !wx.cloud) {
-    return Promise.resolve(emptyLive({ code: 'NOT_CLOUD', message: '当前为直连调试模式，大模型速览需云开发模式' }))
+  if (!wx.cloud) {
+    return Promise.resolve(emptyLive({ code: 'NOT_CLOUD', message: '当前环境不支持云开发' }))
   }
   const platform = normalizePlatform(options && options.platform)
   const customPlatform =
     platform === 'other' ? String((options && options.customPlatform) || '').trim() : ''
   const payload = { city, platform, force: !!(options && options.force) }
   if (customPlatform) payload.customPlatform = customPlatform
+  // 用户自己的大模型 Key，仅在本次请求中传给云函数
   const llm = storage.getLlmConfig()
   if (llm && llm.deepseek) {
     payload.llm = { deepseek: llm.deepseek, model: llm.model }
@@ -319,65 +317,11 @@ function load(city, options) {
   return fetchCloud(city, options).then((live) => ({ live }))
 }
 
-/**
- * 校验自建攻略服务地址：必须 https，且域名在 config.guideApiAllowHosts 白名单内
- * 返回去掉末尾斜杠的规范地址；不合法返回空串
- */
-function normalizeBase(raw) {
-  const base = String(raw || '').trim()
-  if (!base) return ''
-  if (!/^https:\/\/[^/?#\s]+/i.test(base)) return ''
-  const hostMatch = /^https:\/\/([^/?#:]+)/i.exec(base)
-  if (!hostMatch) return ''
-  const host = hostMatch[1].toLowerCase()
-  const allowHosts = (config.guideApiAllowHosts || []).map((item) => String(item).toLowerCase())
-  if (allowHosts.indexOf(host) < 0) return ''
-  return base.replace(/[?#].*$/, '').replace(/\/+$/, '')
-}
-
-/** 远端攻略条目必须包含合法基础字段，缺字段条目直接丢弃 */
-function isValidRemote(guide) {
-  if (!guide || typeof guide !== 'object') return false
-  if (typeof guide.id !== 'string' || !guide.id) return false
-  if (typeof guide.title !== 'string' || !guide.title) return false
-  if (typeof guide.updatedAt !== 'string' || !dateUtil.isValidDate(guide.updatedAt)) return false
-  return true
-}
-
-/**
- * 可选：自建攻略聚合服务（需自行确保数据来源合规）
- */
-function fetchRemote(city) {
-  const settings = storage.getSettings()
-  const base = normalizeBase(settings.guideApiBase)
-  if (!base) return Promise.resolve([])
-
-  const url = `${base}?city=${encodeURIComponent(city)}`
-  return new Promise((resolve) => {
-    wx.request({
-      url,
-      method: 'GET',
-      timeout: 8000,
-      success(res) {
-        if (res.statusCode !== 200 || !res.data) return resolve([])
-        const list = Array.isArray(res.data) ? res.data : res.data.list
-        if (!Array.isArray(list)) return resolve([])
-        resolve(list.filter(isValidRemote).map(decorate))
-      },
-      fail() {
-        resolve([])
-      }
-    })
-  })
-}
-
 module.exports = {
   load,
   fetchCloud,
   suggestSpots,
   forPlan,
-  fetchRemote,
-  normalizeBase,
   decorate,
   daysSince,
   normalizePlatform,

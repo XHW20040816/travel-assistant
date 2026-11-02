@@ -1,7 +1,7 @@
 /**
  * 攻略页
  * 目的地由用户手动输入；按所选平台（小红书/抖音/知乎等）生成 AI 参考速览，
- * 并提供平台真实搜索链接，复制后到浏览器或 App 查看内容（Key 在「我的」页配置）
+ * 并提供平台真实搜索链接，复制后到浏览器或 App 查看内容
  */
 const storage = require('../../services/storage')
 const config = require('../../config/index')
@@ -9,26 +9,15 @@ const guideService = require('../../services/guide')
 const format = require('../../utils/format')
 
 const ERROR_HINTS = {
-  NO_KEY: '在「我的」页填写 DeepSeek Key 后即可生成攻略速览',
-  NOT_CLOUD: '把「数据源」切换为云开发模式，才能调用大模型速览',
+  NO_KEY: '请先在「我的」绑定自己的大模型 Key',
   RATE_LIMITED: '生成过于频繁，请 1 分钟后重试',
   GUIDE_EMPTY: '该平台暂未生成速览，可切换平台或换个目的地',
-  PLATFORM_MISMATCH: '云端返回的攻略与所选平台不一致，请重新部署 guideProxy 后重新生成',
+  PLATFORM_MISMATCH: '攻略内容暂时不可用，请稍后重试',
   UPSTREAM_FAIL: '大模型服务暂时不可用，可稍后重试',
-  CLOUD_FN_MISSING: '云函数 guideProxy 未部署，请右键上传并部署',
-  CLOUD_TIMEOUT: '云函数调用超时，请把 guideProxy 超时时间调到 60 秒',
-  CLOUD_FAIL: '云函数调用失败，请检查云开发环境与部署状态'
+  CLOUD_FN_MISSING: '攻略服务暂不可用，请稍后重试',
+  CLOUD_TIMEOUT: '攻略生成超时，请稍后重试',
+  CLOUD_FAIL: '攻略服务暂时不可用，请稍后重试'
 }
-
-const NEED_SETUP = [
-  'NO_KEY',
-  'NOT_CLOUD',
-  'CLOUD_FN_MISSING',
-  'CLOUD_FAIL',
-  'CLOUD_NOT_OPEN',
-  'CLOUD_ENV_INVALID',
-  'CLOUD_NOT_INIT'
-]
 
 function relativeTime(stamp) {
   const time = Number(stamp) || 0
@@ -74,25 +63,21 @@ Page({
     loading: false,
     error: null,
     errorHint: '',
-    needSetup: false,
-    llmReady: false,
-    dataSource: 'cloud',
     sourceBadge: '大模型攻略速览',
-    openMap: {}
+    openMap: {},
+    needSetup: false
   },
 
   onLoad() {
-    this.setData({ inputCity: suggestCity() })
+    this.setData({ inputCity: suggestCity(), needSetup: !storage.hasLlmConfig() })
     const settings = storage.getSettings()
     this._customSaved = String(settings.guidePlatformCustom || '').trim()
     this.setData({ customPlatform: this._customSaved })
     this.applyPlatform(settings.guidePlatform)
-    this.syncBadge()
   },
 
   onShow() {
-    const ready = storage.hasLlmConfig()
-    const justReady = ready && !this.data.llmReady
+    this.setData({ needSetup: !storage.hasLlmConfig() })
     const settings = storage.getSettings()
     const savedPlatform = guideService.normalizePlatform(settings.guidePlatform)
     const savedCustom = String(settings.guidePlatformCustom || '').trim()
@@ -101,16 +86,10 @@ Page({
       this.setData({ customPlatform: savedCustom })
       this.applyPlatform(savedPlatform)
     }
-    this.syncBadge()
-    // 刚从「我的」页配好 Key，若已输入目的地则自动补一次生成（自定义平台需先有平台名）
-    if (
-      justReady &&
-      this.data.city &&
-      !this.data.loading &&
-      (this.data.platform !== 'other' || String(this.data.customPlatform || '').trim())
-    ) {
-      this.load(this.data.city, false)
-    }
+  },
+
+  goMine() {
+    wx.switchTab({ url: '/pages/mine/mine' })
   },
 
   applyPlatform(key) {
@@ -145,7 +124,7 @@ Page({
       hasCustom = !!saved
     }
     storage.saveSettings({ guidePlatform: key })
-    this.setData({ liveItems: [], liveMeta: '', error: null, errorHint: '', needSetup: false })
+    this.setData({ liveItems: [], liveMeta: '', error: null, errorHint: '' })
     // 切平台立即重查：load 内部用 token 作废旧请求，避免旧平台结果套在新平台标签下
     if (this.data.city && (key !== 'other' || hasCustom)) {
       this.load(this.data.city, false)
@@ -178,7 +157,7 @@ Page({
     storage.saveSettings({ guidePlatform: 'other', guidePlatformCustom: name })
     this._customSaved = name
     if (!changed || !this.data.city) return
-    this.setData({ liveItems: [], liveMeta: '', error: null, errorHint: '', needSetup: false })
+    this.setData({ liveItems: [], liveMeta: '', error: null, errorHint: '' })
     this.load(this.data.city, false)
   },
 
@@ -199,17 +178,6 @@ Page({
       return
     }
     this.applyCustomPlatform(name)
-  },
-
-  syncBadge() {
-    const settings = storage.getSettings()
-    const ready = storage.hasLlmConfig()
-    const dataSource = settings.dataSource
-    this.setData({
-      llmReady: ready,
-      dataSource,
-      sourceBadge: dataSource !== 'cloud' ? '直连调试模式' : ready ? '大模型攻略速览' : '本机未配置大模型'
-    })
   },
 
   onCityInput(e) {
@@ -250,6 +218,11 @@ Page({
       wx.showToast({ title: '请先输入目的地', icon: 'none' })
       return
     }
+    if (!storage.hasLlmConfig()) {
+      this.setData({ needSetup: true })
+      wx.showToast({ title: '请先在「我的」绑定大模型 Key', icon: 'none' })
+      return
+    }
     if (city.length > 20) {
       wx.showToast({ title: '目的地名称过长', icon: 'none' })
       return
@@ -272,8 +245,7 @@ Page({
       liveItems: [],
       liveMeta: '',
       error: null,
-      errorHint: '',
-      needSetup: false
+      errorHint: ''
     })
     this.load(city, false)
   },
@@ -299,8 +271,7 @@ Page({
 
   load(city, force) {
     const token = (this._loadToken = (this._loadToken || 0) + 1)
-    this.syncBadge()
-    this.setData({ loading: true, error: null, errorHint: '', needSetup: false })
+    this.setData({ loading: true, error: null, errorHint: '' })
     guideService
       .load(city, {
         force: !!force,
@@ -308,40 +279,38 @@ Page({
         customPlatform: this.data.platform === 'other' ? this.data.customPlatform : ''
       })
       .then((res) => {
-      if (token !== this._loadToken) return
-      this._live = (res.live.items || []).slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-      this._loaded = true
-      const error = res.live.error || null
-      const hint = error
-        ? error.code === 'GUIDE_EMPTY'
-          ? `「${this.data.platformLabel}」暂未生成攻略速览，可切换平台或换个目的地`
-          : error.message || ERROR_HINTS[error.code] || '可稍后重试'
-        : ''
-      this.setData({
-        loading: false,
-        liveItems: this._live.map((guide) => ({
-          ...guide,
-          kind: 'live',
-          likesText: guide.likes ? format.popular(guide.likes) : ''
-        })),
-        liveMeta: buildLiveMeta(res.live),
-        error,
-        errorHint: hint,
-        needSetup: !!(error && NEED_SETUP.indexOf(error.code) >= 0)
+        if (token !== this._loadToken) return
+        this._live = (res.live.items || []).slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
+        this._loaded = true
+        const error = res.live.error || null
+        const hint = error
+          ? error.code === 'GUIDE_EMPTY'
+            ? `「${this.data.platformLabel}」暂未生成攻略速览，可切换平台或换个目的地`
+            : error.message || ERROR_HINTS[error.code] || '可稍后重试'
+          : ''
+        this.setData({
+          loading: false,
+          liveItems: this._live.map((guide) => ({
+            ...guide,
+            kind: 'live',
+            likesText: guide.likes ? format.popular(guide.likes) : ''
+          })),
+          liveMeta: buildLiveMeta(res.live),
+          error,
+          errorHint: hint
+        })
       })
-    })
-    .catch((err) => {
-      if (token !== this._loadToken) return
-      console.warn('[guide] 速览生成异常', (err && (err.errMsg || err.message)) || err)
-      this.setData({
-        loading: false,
-        liveItems: [],
-        liveMeta: '',
-        error: { code: 'CLOUD_FAIL', message: '攻略速览生成异常，请稍后重试' },
-        errorHint: '可检查云开发环境与 guideProxy 部署状态后重试',
-        needSetup: false
+      .catch((err) => {
+        if (token !== this._loadToken) return
+        console.warn('[guide] 速览生成异常', (err && (err.errMsg || err.message)) || err)
+        this.setData({
+          loading: false,
+          liveItems: [],
+          liveMeta: '',
+          error: { code: 'CLOUD_FAIL', message: '攻略速览生成异常，请稍后重试' },
+          errorHint: '请检查网络后稍后重试'
+        })
       })
-    })
   },
 
   refresh() {
@@ -405,10 +374,6 @@ Page({
       return
     }
     wx.navigateTo({ url: `/pages/poi/poi?id=${encodeURIComponent(poi.id)}` })
-  },
-
-  goMine() {
-    wx.switchTab({ url: '/pages/mine/mine' })
   },
 
   goHelp() {

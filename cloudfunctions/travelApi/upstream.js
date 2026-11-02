@@ -164,7 +164,7 @@ function baiduSign(urlPath, query, sk) {
 
 function buildAmap(action, params, env) {
   const key = env.AMAP_KEY
-  if (!key) throw fail('NO_KEY', '未配置高德 Key：请在「我的」页填写，或配置 AMAP_KEY 环境变量')
+  if (!key) throw fail('NO_KEY', '未配置高德 Key：请先在「我的」中绑定导航 API Key')
   const url = AMAP_ENDPOINTS[action]
   if (!url) throw fail('NO_ACTION', `高德暂不支持 ${action}`)
   const fields = AMAP_FIELDS[action] || []
@@ -175,7 +175,7 @@ function buildAmap(action, params, env) {
 
 function buildBaidu(action, params, env) {
   const ak = env.BAIDU_AK
-  if (!ak) throw fail('NO_KEY', '未配置百度 Key：请在「我的」页填写，或配置 BAIDU_AK 环境变量')
+  if (!ak) throw fail('NO_KEY', '未配置百度 Key：请先在「我的」中绑定导航 API Key')
   const url = BAIDU_ENDPOINTS[action]
   if (!url) throw fail('NO_ACTION', `百度地图暂不支持 ${action}`)
 
@@ -221,7 +221,7 @@ function buildBaidu(action, params, env) {
 
 function buildQWeather(params, env) {
   const key = env.QWEATHER_KEY
-  if (!key) throw fail('NO_KEY', '未配置和风天气 Key：请在「我的」页填写，或配置 QWEATHER_KEY 环境变量')
+  if (!key) throw fail('NO_KEY', '未配置和风天气 Key：请先在「我的」中绑定天气 API Key')
   if (!params.lng || !params.lat) throw fail('BAD_PARAM', '7 天预报缺少经纬度')
   const point = checkPoint(Number(params.lng), Number(params.lat), 'weather7d')
   return {
@@ -257,10 +257,10 @@ function validate(provider, action, data) {
       const message = (data && data.message) || ''
       // 百度原始报错按类型映射，便于定位是 SN、AK、权限还是配额问题
       if (/SN/i.test(message)) {
-        throw fail('BAIDU_SN', '百度 SN 校验失败：请确认云函数 BAIDU_SK 与 AK 匹配，且服务器时间同步')
+        throw fail('BAIDU_SN', '百度 SN 校验失败：请确认「我的」中百度 AK 与 SK 匹配，且服务器时间同步')
       }
       if (/AK/i.test(message) && /非法|不存在|错误|不正确/i.test(message)) {
-        throw fail('BAIDU_AK_INVALID', '百度 AK 无效：请检查「我的」页 AK 或 BAIDU_AK 环境变量')
+        throw fail('BAIDU_AK_INVALID', '百度 AK 无效：请在「我的」中重新填写导航 API Key')
       }
       if (/白名单|权限|禁用|referer|Referer/i.test(message)) {
         throw fail('BAIDU_PERMISSION', '百度 AK 权限或白名单受限：请检查控制台 IP 白名单与 SN 设置')

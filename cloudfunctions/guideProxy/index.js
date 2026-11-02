@@ -4,14 +4,14 @@
  * 小程序内不抓取小红书/抖音等站内内容：AI 只输出通用参考总结，
  * 条目链接为对应平台的搜索页，用户复制后在浏览器或 App 查看真实内容。
  *
- * Key 来源（优先级从高到低）：
- *   1. 小程序「我的」页前端配置（加密存储，调用时随 event.llm 传入）
- *   2. 云函数环境变量 DEEPSEEK_API_KEY
+ * Key 来源：用户在小程序「我的」页绑定自己的大模型 Key，
+ * 随请求传入 event.llm；云函数不使用运营者的环境变量 Key。
+ * INTERNAL_TOKEN 仅供云函数间调用，此时才回落到 DEEPSEEK_API_KEY。
  *
  * 环境变量：
- *   DEEPSEEK_API_KEY     DeepSeek API Key（可选）
+ *   DEEPSEEK_API_KEY    仅内部调用兜底（可选）
  *   DEEPSEEK_BASE_URL    可选，默认 https://api.deepseek.com
- *   DEEPSEEK_MODEL       可选，默认 deepseek-chat
+ *   DEEPSEEK_MODEL       内部调用默认模型（可选）
  *   INTERNAL_TOKEN       可选，供云函数间调用
  *
  * 返回 { ok, data: { city, generatedAt, items, cached }, code, message }
@@ -28,7 +28,7 @@ const COLLECTION = 'travel_cache'
 const PUBLIC_MSG = {
   NO_OPENID: '仅小程序内可调用该接口',
   BAD_PARAM: '参数格式不正确',
-  NO_KEY: '未配置 DeepSeek Key，请在「我的」页填写后重试',
+  NO_KEY: '请先在「我的」中绑定自己的大模型 Key',
   RATE_LIMITED: '请求过于频繁，请稍后再试',
   GUIDE_EMPTY: '暂未生成攻略速览，可换个目的地或稍后重试',
   UPSTREAM_FAIL: '攻略服务暂时不可用，请稍后重试'
@@ -45,24 +45,23 @@ function fail(code, message) {
 }
 
 /**
- * 读取并校验大模型配置：前端传入优先，缺失时回退云函数环境变量
- * 多用户公开部署时可设 ALLOW_CLIENT_LLM_KEYS=0，只允许云端环境变量 Key
+ * 读取并校验大模型配置：优先用户传入的 Key，只有内部调用才用环境变量
  * 注意：不打印 Key，任何返回给客户端的内容都不含 Key
  */
-function readLlm(event) {
-  const allowClient = process.env.ALLOW_CLIENT_LLM_KEYS !== '0'
-  const raw = (allowClient && event && event.llm) || {}
+function readLlm(event, isInternal) {
+  const raw = (event && event.llm) || {}
   const clientDeepseek = String(raw.deepseek || '').trim()
   const clientModel = String(raw.model || '').trim()
-  const model = clientModel || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
   if (clientDeepseek) {
     if (clientDeepseek.length > 200) throw fail('BAD_PARAM', 'Key 长度异常')
     if (!/^[A-Za-z0-9._-]+$/.test(clientDeepseek)) throw fail('BAD_PARAM', 'Key 含非法字符')
   }
+  const model = clientModel || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(model)) throw fail('BAD_PARAM', '模型名不合法')
 
-  const deepseek = clientDeepseek || process.env.DEEPSEEK_API_KEY || ''
-  const source = clientDeepseek ? 'client' : deepseek ? 'env' : 'none'
+  const envKey = isInternal ? process.env.DEEPSEEK_API_KEY || '' : ''
+  const deepseek = clientDeepseek || envKey
+  const source = clientDeepseek ? 'client' : envKey ? 'env' : 'none'
   return { deepseek, model, source }
 }
 
@@ -232,7 +231,7 @@ exports.main = async (event) => {
       }
     }
 
-    const llm = readLlm(event)
+    const llm = readLlm(event, isInternal)
     if (!llm.deepseek) throw fail('NO_KEY')
     console.log(
       '[audit]',
