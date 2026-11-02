@@ -639,11 +639,12 @@ Page({
       }
     } catch (err) {
       console.warn('[index] geocode failed', err.message)
+      wx.showToast({ title: (err && err.message) || '未找到该目的地，请检查名称', icon: 'none' })
     }
     this.loadSpots()
   },
 
-  startPlanning() {
+  async startPlanning() {
     const destName = String(this.data.destName || '').trim()
     if (!destName) {
       wx.showToast({ title: '请先填写目的地', icon: 'none' })
@@ -665,12 +666,23 @@ Page({
       return
     }
 
+    // 自由输入必须能落到真实行政区，避免“火星”被模糊匹配到其他省份后直接规划
+    if (!this.data.guideDest) {
+      try {
+        await mapService.geocode(destName, destName)
+      } catch (err) {
+        wx.showToast({ title: (err && err.message) || '未找到该目的地，请检查名称', icon: 'none' })
+        return
+      }
+    }
+
     const request = {
       origin: this.data.origin,
       destName,
       dest: this.data.guideDest,
       hotSpots: spots.map((spot) => {
-        const { selected: _selected, ...rest } = spot
+        const rest = Object.assign({}, spot)
+        delete rest.selected
         return rest
       }),
       preferredSpots: spots.filter((spot) => spot.selected).map((spot) => spot.name),

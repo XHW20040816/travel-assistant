@@ -5,12 +5,12 @@
 .loading-title {
   font-size: 36rpx;
   font-weight: 700;
-  color: #14213D;
+  color: #2B2418;
 }
 
 .loading-sub {
   font-size: 26rpx;
-  color: #2E6BE6;
+  color: #A86F00;
   margin-top: 10rpx;
 }
 
@@ -27,7 +27,7 @@
   display: flex;
   align-items: center;
   padding: 12rpx 0;
-  color: #98A2B3;
+  color: #A69B87;
   font-size: 25rpx;
 }
 
@@ -36,7 +36,7 @@
 }
 
 .step--active {
-  color: #14213D;
+  color: #2B2418;
   font-weight: 600;
 }
 
@@ -44,8 +44,8 @@
   width: 44rpx;
   height: 44rpx;
   border-radius: 50%;
-  background: #F0F3F9;
-  color: #98A2B3;
+  background: #F2EAD8;
+  color: #A69B87;
   text-align: center;
   line-height: 44rpx;
   font-size: 22rpx;
@@ -58,7 +58,7 @@
 }
 
 .step--active .step__dot {
-  background: #2E6BE6;
+  background: #A86F00;
   color: #FFFFFF;
 }
 
@@ -80,7 +80,7 @@
 .error-text {
   margin-top: 12rpx;
   font-size: 26rpx;
-  color: #55627A;
+  color: #6B604D;
   line-height: 1.6;
 }
 
@@ -123,7 +123,7 @@
 .trip-head__title {
   font-size: 38rpx;
   font-weight: 700;
-  color: #14213D;
+  color: #2B2418;
   margin-bottom: 8rpx;
 }
 
@@ -141,15 +141,15 @@
   padding: 24rpx;
   border-radius: 24rpx;
   background: #FFFFFF;
-  border: 1rpx solid #E6EBF4;
+  border: 1rpx solid #EADFC4;
   box-sizing: border-box;
   transition: all 0.15s;
 }
 
 .variant--active {
-  border-color: #2E6BE6;
-  background: #F5F8FF;
-  box-shadow: 0 12rpx 28rpx rgba(46, 107, 230, 0.12);
+  border-color: #A86F00;
+  background: #FFFAEA;
+  box-shadow: 0 12rpx 28rpx rgba(176, 124, 42, 0.16);
 }
 
 .variant__top {
@@ -161,19 +161,19 @@
 .variant__name {
   font-size: 29rpx;
   font-weight: 700;
-  color: #14213D;
+  color: #2B2418;
 }
 
 .variant__score {
   font-size: 34rpx;
   font-weight: 700;
-  color: #2E6BE6;
+  color: #A86F00;
 }
 
 .variant__tag {
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #7C879C;
+  color: #8A7F6B;
   line-height: 1.4;
 }
 
@@ -186,7 +186,7 @@
 .overview-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #14213D;
+  color: #2B2418;
 }
 
 .score-badge {
@@ -194,8 +194,8 @@
   border-radius: 999rpx;
   font-size: 24rpx;
   font-weight: 600;
-  background: #F0F3F9;
-  color: #55627A;
+  background: #F2EAD8;
+  color: #6B604D;
 }
 
 .metric-grid {
@@ -213,18 +213,18 @@
 .metric__value {
   font-size: 34rpx;
   font-weight: 700;
-  color: #14213D;
+  color: #2B2418;
 }
 
 .metric__label {
   font-size: 22rpx;
-  color: #7C879C;
+  color: #8A7F6B;
   margin-top: 4rpx;
 }
 
 .overview-foot {
   font-size: 23rpx;
-  color: #55627A;
+  color: #6B604D;
   line-height: 1.6;
 }
 
@@ -245,20 +245,20 @@
   margin-right: 14rpx;
   padding: 16rpx 18rpx;
   border-radius: 16rpx;
-  border: 1rpx solid #E6EBF4;
-  background: #FBFCFE;
+  border: 1rpx solid #EADFC4;
+  background: #FFFDF7;
   box-sizing: border-box;
 }
 
 .stay-tab--active {
-  border-color: #2E6BE6;
-  background: #F5F8FF;
+  border-color: #A86F00;
+  background: #FFFAEA;
 }
 
 .stay-tab__name {
   font-size: 25rpx;
   font-weight: 600;
-  color: #14213D;
+  color: #2B2418;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -266,13 +266,13 @@
 
 .stay-tab__meta {
   font-size: 22rpx;
-  color: #7C879C;
+  color: #8A7F6B;
   margin-top: 6rpx;
 }
 
 .stay-detail {
   margin-top: 14rpx;
-  border-top: 1rpx solid #EEF1F6;
+  border-top: 1rpx solid #F0E8D6;
   padding-top: 18rpx;
 }
 
@@ -290,7 +290,7 @@
 .stay-detail__name {
   font-size: 28rpx;
   font-weight: 700;
-  color: #14213D;
+  color: #2B2418;
   line-height: 1.4;
 }
 
@@ -298,7 +298,7 @@
   flex-shrink: 0;
   font-size: 26rpx;
   font-weight: 700;
-  color: #2E6BE6;
+  color: #A86F00;
 }
 
 .stay-tags {
@@ -308,7 +308,7 @@
 .stay-address {
   margin-top: 12rpx;
   font-size: 23rpx;
-  color: #55627A;
+  color: #6B604D;
   line-height: 1.5;
 }
 
@@ -330,7 +330,7 @@
 }
 
 .day {
-  border-top: 1rpx solid #EEF1F6;
+  border-top: 1rpx solid #F0E8D6;
   padding-top: 24rpx;
   margin-top: 24rpx;
 }
@@ -352,13 +352,13 @@
   align-items: center;
   font-size: 27rpx;
   font-weight: 600;
-  color: #14213D;
+  color: #2B2418;
 }
 
 .day-num {
   display: inline-block;
-  background: #EAF0FF;
-  color: #2E6BE6;
+  background: #FFF4D6;
+  color: #A86F00;
   border-radius: 8rpx;
   padding: 2rpx 10rpx;
   font-size: 22rpx;
@@ -368,7 +368,7 @@
 .day-weather {
   text-align: right;
   font-size: 24rpx;
-  color: #43516B;
+  color: #5C5140;
 }
 
 .day-weather .tiny {
@@ -392,7 +392,7 @@
 .tl-time {
   width: 88rpx;
   font-size: 23rpx;
-  color: #7C879C;
+  color: #8A7F6B;
   padding-top: 12rpx;
 }
 
@@ -410,15 +410,15 @@
   border-radius: 50%;
   text-align: center;
   font-size: 22rpx;
-  background: #F0F3F9;
-  color: #55627A;
+  background: #F2EAD8;
+  color: #6B604D;
   margin-top: 6rpx;
   flex-shrink: 0;
 }
 
 .tl--poi .tl-dot {
-  background: #EAF0FF;
-  color: #2E6BE6;
+  background: #FFF4D6;
+  color: #A86F00;
 }
 
 .tl--transit .tl-dot {
@@ -432,14 +432,14 @@
 }
 
 .tl--end .tl-dot {
-  background: #EEF1F6;
-  color: #7C879C;
+  background: #F0E8D6;
+  color: #8A7F6B;
 }
 
 .tl-line {
   flex: 1;
   width: 2rpx;
-  background: #EEF1F6;
+  background: #F0E8D6;
   margin: 4rpx 0 0;
   min-height: 20rpx;
 }
@@ -452,13 +452,13 @@
 .tl-title {
   font-size: 27rpx;
   font-weight: 600;
-  color: #14213D;
+  color: #2B2418;
   line-height: 1.4;
 }
 
 .tl-sub {
   font-size: 23rpx;
-  color: #7C879C;
+  color: #8A7F6B;
   margin-top: 4rpx;
   line-height: 1.5;
 }
@@ -487,7 +487,7 @@
 }
 
 .day-foot {
-  background: #F7F9FD;
+  background: #FFF9EC;
   border-radius: 16rpx;
   padding: 18rpx 20rpx;
   margin-top: 4rpx;
@@ -495,7 +495,7 @@
 
 .day-foot__line {
   font-size: 23rpx;
-  color: #55627A;
+  color: #6B604D;
   margin-bottom: 10rpx;
 }
 
@@ -508,8 +508,8 @@
 .clothing__label {
   flex-shrink: 0;
   font-size: 22rpx;
-  color: #2E6BE6;
-  background: #EAF0FF;
+  color: #A86F00;
+  background: #FFF4D6;
   border-radius: 6rpx;
   padding: 2rpx 10rpx;
   margin-right: 12rpx;
@@ -517,7 +517,7 @@
 
 .clothing__text {
   font-size: 23rpx;
-  color: #55627A;
+  color: #6B604D;
   line-height: 1.5;
 }
 
@@ -528,13 +528,13 @@
 .decision__title {
   font-size: 26rpx;
   font-weight: 600;
-  color: #14213D;
+  color: #2B2418;
   margin-bottom: 6rpx;
 }
 
 .decision__text {
   font-size: 24rpx;
-  color: #55627A;
+  color: #6B604D;
   line-height: 1.6;
 }
 
@@ -557,26 +557,26 @@
 }
 
 .risk--low {
-  border-left-color: #98A2B3;
-  background: #F9FAFC;
+  border-left-color: #A69B87;
+  background: #FFFBF2;
 }
 
 .risk__title {
   font-size: 25rpx;
   font-weight: 600;
-  color: #14213D;
+  color: #2B2418;
 }
 
 .risk__text {
   font-size: 23rpx;
-  color: #55627A;
+  color: #6B604D;
   line-height: 1.55;
   margin-top: 4rpx;
 }
 
 .guide-mini {
   padding: 18rpx 0;
-  border-bottom: 1rpx solid #F0F3F9;
+  border-bottom: 1rpx solid #F2EAD8;
 }
 
 .guide-mini:last-child {
@@ -592,14 +592,14 @@
 .guide-mini__title {
   font-size: 26rpx;
   font-weight: 600;
-  color: #14213D;
+  color: #2B2418;
   margin-top: 10rpx;
   line-height: 1.5;
 }
 
 .guide-mini__summary {
   font-size: 23rpx;
-  color: #7C879C;
+  color: #8A7F6B;
   margin-top: 6rpx;
   line-height: 1.55;
 }
@@ -609,7 +609,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16rpx 0;
-  border-bottom: 1rpx solid #F0F3F9;
+  border-bottom: 1rpx solid #F2EAD8;
 }
 
 .poi-row:last-child {
@@ -629,7 +629,7 @@
 .poi-row__score {
   font-size: 30rpx;
   font-weight: 700;
-  color: #2E6BE6;
+  color: #A86F00;
 }
 
 .actions {

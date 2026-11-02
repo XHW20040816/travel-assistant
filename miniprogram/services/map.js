@@ -19,6 +19,68 @@ const PREF_QUERY = {
 
 const NOISE_WORDS = ['酒店', '宾馆', '停车场', '售票', '入口', '地铁站', '公交站', '派出所', '医院', '银行', '加油站', '充电站']
 
+/** 可作为目的地的行政区级别；村庄、兴趣点、门牌号等模糊匹配结果不直接采用 */
+const ADMIN_LEVELS = ['国家', '省', '市', '直辖市', '城市', '区县', '区', '县', '县级市', '乡镇', '特别行政区']
+
+/** Amap 的 city 可能返回数组，行政区名称统一去空白 */
+function cleanAdminName(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean).join('')
+  return String(value || '').replace(/\s+/g, '')
+}
+
+function normalizeLevel(value) {
+  return String(value || '').replace(/[^\u4e00-\u9fa5]/g, '')
+}
+
+/** 关键词是否命中省/市/区县/乡镇任一行政名称，支持“杭州 西湖”这类多词输入 */
+function matchAdminName(keyword, result) {
+  const names = [result.province, result.adminCity, result.district, result.township]
+    .map(cleanAdminName)
+    .filter(Boolean)
+  if (!names.length) return false
+  const tokens = String(keyword || '')
+    .split(/[\s,，、/|·]+/)
+    .map(cleanAdminName)
+    .filter(Boolean)
+  const key = cleanAdminName(keyword)
+  if (key) tokens.push(key)
+  return names.some((name) =>
+    tokens.some((token) => {
+      if (!token) return false
+      if (name.indexOf(token) >= 0) return true
+      return token.length >= 2 && name.length >= 2 && token.indexOf(name) >= 0
+    })
+  )
+}
+
+/**
+ * 自由文本地理编码校验：只接受行政区级别结果，避免“火星”被模糊匹配到贵州某村后直接规划
+ * 地图选点反查地址时传 allowPoi，允许兴趣点、门牌号等精确坐标
+ */
+function assertGeoResult(result, keyword, options) {
+  if (options && options.allowPoi) return
+  const lng = Number(result.lng)
+  const lat = Number(result.lat)
+  if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+    throw api.makeError('GEOCODE_FAIL', `「${keyword}」没有返回有效坐标`)
+  }
+  const hasAdminName = [result.province, result.adminCity, result.district, result.township].some((name) =>
+    cleanAdminName(name)
+  )
+  const notFound = () => {
+    throw api.makeError(
+      'DEST_NOT_FOUND',
+      `未找到城市/地区「${keyword}」，请输入城市或区县名称，或使用「地图选点」选择真实地点`
+    )
+  }
+  if (hasAdminName) {
+    if (!result.adcode || !matchAdminName(keyword, result)) notFound()
+    return
+  }
+  // 百度正地理编码不返回 addressComponent，只能按 level 是否属于行政区划判断
+  if (ADMIN_LEVELS.indexOf(normalizeLevel(result.level)) < 0) notFound()
+}
+
 /** 稳定短哈希，用于无 id 的 POI 生成唯一标识 */
 function hashText(text) {
   const str = String(text || '')
@@ -235,7 +297,7 @@ function normalizePoi(raw, provider, cityName) {
   return provider === 'baidu' ? normalizeBaiduPoi(raw, cityName) : normalizeAmapPoi(raw, cityName)
 }
 
-async function geocode(keyword, city) {
+async function geocode(keyword, city, options) {
   const params = { address: keyword }
   // city 只做同名消歧，留空时交给上游按地址自行判断（地图选点常常只给地址）
   if (city) params.city = city
@@ -245,16 +307,24 @@ async function geocode(keyword, city) {
   if (provider === 'baidu') {
     if (data.status !== 0 || !data.result) throw api.makeError('GEOCODE_FAIL', data.message || '百度地理编码失败')
     const converted = geo.bd09ToGcj02(data.result.location.lng, data.result.location.lat)
-    return {
+    const comp = data.result.addressComponent || {}
+    const adminCity = cleanAdminName(comp.city)
+    const result = {
       name: keyword,
-      city: data.result.addressComponent ? data.result.addressComponent.city : keyword,
-      adcode: data.result.addressComponent ? data.result.addressComponent.city_code : '',
+      city: adminCity || cleanAdminName(comp.province) || cleanAdminName(comp.district) || keyword,
+      adminCity,
+      adcode: cleanAdminName(comp.adcode) || cleanAdminName(comp.city_code),
+      province: cleanAdminName(comp.province),
+      district: cleanAdminName(comp.district),
+      township: cleanAdminName(comp.town),
       lng: converted.lng,
       lat: converted.lat,
       level: data.result.level,
       source: 'baidu',
       fetchedAt: meta.fetchedAt
     }
+    assertGeoResult(result, keyword, options)
+    return result
   }
 
   if (data.status !== '1' || !data.geocodes || !data.geocodes.length) {
@@ -262,16 +332,23 @@ async function geocode(keyword, city) {
   }
   const item = data.geocodes[0]
   const [lng, lat] = item.location.split(',').map(Number)
-  return {
+  const adminCity = cleanAdminName(item.city)
+  const result = {
     name: item.formatted_address || keyword,
-    city: item.city || keyword,
-    adcode: item.adcode,
+    city: adminCity || cleanAdminName(item.province) || cleanAdminName(item.district) || keyword,
+    adminCity,
+    adcode: cleanAdminName(item.adcode),
+    province: cleanAdminName(item.province),
+    district: cleanAdminName(item.district),
+    township: cleanAdminName(item.township),
     lng,
     lat,
     level: item.level,
     source: 'amap',
     fetchedAt: meta.fetchedAt
   }
+  assertGeoResult(result, keyword, options)
+  return result
 }
 
 /**

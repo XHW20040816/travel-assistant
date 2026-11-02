@@ -216,7 +216,9 @@ async function resolveDestination(req) {
     // 地图选点常给的是景区/街区名，用地址反查城市更稳；反查失败不影响已持有的坐标
     let geoResult = null
     try {
-      geoResult = await mapService.geocode(req.dest.address || req.dest.name || req.destName)
+      geoResult = await mapService.geocode(req.dest.address || req.dest.name || req.destName, '', {
+        allowPoi: true
+      })
     } catch (err) {
       console.warn('[plan] 地图选点反查城市失败，改用选点名称', err && err.message)
     }

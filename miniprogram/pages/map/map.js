@@ -2,7 +2,7 @@ const storage = require('../../services/storage')
 const mapService = require('../../services/map')
 const format = require('../../utils/format')
 
-const PALETTE = ['#2E6BE6', '#1E9E6A', '#D97B12', '#7C4DD8', '#D5494F']
+const PALETTE = ['#A86F00', '#1E9E6A', '#D97B12', '#7C4DD8', '#D5494F']
 
 Page({
   data: {
@@ -84,7 +84,7 @@ Page({
             content: `${poiOrder}`,
             color: '#FFFFFF',
             fontSize: 10,
-            bgColor: '#2E6BE6',
+            bgColor: '#A86F00',
             borderRadius: 20,
             padding: 3,
             anchorX: 0,
@@ -93,7 +93,7 @@ Page({
           },
           callout: {
             content: `${poiOrder}. ${item.name}`,
-            color: '#14213D',
+            color: '#2B2418',
             fontSize: 12,
             borderRadius: 8,
             padding: 8,

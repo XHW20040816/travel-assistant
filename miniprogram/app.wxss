@@ -1,6 +1,6 @@
 page {
-  background: linear-gradient(180deg, #EDF2FC 0%, #F4F6FB 380rpx, #F4F6FB 100%);
-  color: #1B2333;
+  background: linear-gradient(180deg, #FFF8E6 0%, #FFFCF3 380rpx, #FFFCF3 100%);
+  color: #2B2418;
   font-size: 28rpx;
   line-height: 1.5;
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -14,7 +14,7 @@ page {
   background: #FFFFFF;
   border-radius: 24rpx;
   padding: 28rpx;
-  box-shadow: 0 10rpx 34rpx rgba(28, 45, 80, 0.05);
+  box-shadow: 0 10rpx 34rpx rgba(120, 88, 20, 0.06);
   margin-bottom: 24rpx;
 }
 
@@ -28,7 +28,7 @@ page {
 .section-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #14213D;
+  color: #2B2418;
 }
 
 .section-title::before {
@@ -37,18 +37,18 @@ page {
   width: 8rpx;
   height: 28rpx;
   border-radius: 4rpx;
-  background: linear-gradient(180deg, #4C8DF6, #2E6BE6);
+  background: linear-gradient(180deg, #F5CC63, #D99A1F);
   margin-right: 14rpx;
   vertical-align: -4rpx;
 }
 
 .muted {
-  color: #7C879C;
+  color: #8A7F6B;
   font-size: 24rpx;
 }
 
 .tiny {
-  color: #98A2B3;
+  color: #A69B87;
   font-size: 22rpx;
 }
 
@@ -71,41 +71,41 @@ page {
   margin: 8rpx;
   padding: 14rpx 26rpx;
   border-radius: 999rpx;
-  background: #F3F5FA;
-  color: #43516B;
+  background: #FFF7E3;
+  color: #5C5140;
   font-size: 24rpx;
   border: 1rpx solid transparent;
   transition: all 0.15s;
 }
 
 .chip--active {
-  background: #EAF0FF;
-  color: #2E6BE6;
-  border-color: #2E6BE6;
+  background: #FFF4D6;
+  color: #A86F00;
+  border-color: #A86F00;
   font-weight: 600;
-  box-shadow: 0 6rpx 14rpx rgba(46, 107, 230, 0.12);
+  box-shadow: 0 6rpx 14rpx rgba(176, 124, 42, 0.16);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #2E6BE6, #2AA0E6);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #F6C94F, #E2A72B);
+  color: #4A3512;
   border-radius: 999rpx;
   font-size: 30rpx;
   font-weight: 600;
   padding: 24rpx 0;
   text-align: center;
   letter-spacing: 1rpx;
-  box-shadow: 0 14rpx 30rpx rgba(46, 107, 230, 0.26);
+  box-shadow: 0 14rpx 30rpx rgba(176, 124, 42, 0.28);
 }
 
 .btn-primary--disabled {
-  background: #C9D2E3;
+  background: #E3D6BA;
   box-shadow: none;
 }
 
 .btn-ghost {
-  border: 1rpx solid #DCE3EE;
-  color: #43516B;
+  border: 1rpx solid #E6D9B9;
+  color: #5C5140;
   border-radius: 999rpx;
   font-size: 26rpx;
   padding: 20rpx 0;
@@ -114,8 +114,8 @@ page {
 }
 
 .btn-mini {
-  background: #EAF0FF;
-  color: #2E6BE6;
+  background: #FFF4D6;
+  color: #A86F00;
   border-radius: 999rpx;
   font-size: 24rpx;
   font-weight: 600;
@@ -125,7 +125,7 @@ page {
 }
 
 .link {
-  color: #2E6BE6;
+  color: #A86F00;
   font-size: 24rpx;
 }
 
@@ -134,14 +134,14 @@ page {
   padding: 4rpx 14rpx;
   border-radius: 8rpx;
   font-size: 22rpx;
-  background: #F0F3F9;
-  color: #55627A;
+  background: #F2EAD8;
+  color: #6B604D;
   margin-right: 10rpx;
 }
 
 .tag--blue {
-  background: #EAF0FF;
-  color: #2E6BE6;
+  background: #FFF4D6;
+  color: #A86F00;
 }
 
 .tag--green {
@@ -161,20 +161,20 @@ page {
 
 .divider {
   height: 1rpx;
-  background: #EEF1F6;
+  background: #F0E8D6;
   margin: 24rpx 0;
 }
 
 .empty {
   padding: 80rpx 0;
   text-align: center;
-  color: #98A2B3;
+  color: #A69B87;
   font-size: 26rpx;
 }
 
 .bar {
   height: 12rpx;
-  background: #EEF1F6;
+  background: #F0E8D6;
   border-radius: 8rpx;
   overflow: hidden;
 }
@@ -182,7 +182,7 @@ page {
 .bar__inner {
   height: 100%;
   border-radius: 8rpx;
-  background: linear-gradient(90deg, #2E6BE6, #2AA0E6);
+  background: linear-gradient(90deg, #F0C36D, #D99A1F);
 }
 
 .safe-bottom {

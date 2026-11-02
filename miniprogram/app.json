@@ -11,33 +11,41 @@
   ],
   "lazyCodeLoading": "requiredComponents",
   "window": {
-    "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#1E2E52",
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#FFD86B",
     "navigationBarTitleText": "行程规划师",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#F4F6FB"
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FFFCF3"
   },
   "tabBar": {
-    "color": "#7C879C",
-    "selectedColor": "#2E6BE6",
-    "backgroundColor": "#FFFFFF",
+    "color": "#8A7F6B",
+    "selectedColor": "#A86F00",
+    "backgroundColor": "#FFFDF7",
     "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/guideHelp/guideHelp",
-        "text": "介绍"
+        "text": "介绍",
+        "iconPath": "assets/tab/tab-intro.png",
+        "selectedIconPath": "assets/tab/tab-intro.png"
       },
       {
         "pagePath": "pages/guide/guide",
-        "text": "攻略"
+        "text": "攻略",
+        "iconPath": "assets/tab/tab-guide.png",
+        "selectedIconPath": "assets/tab/tab-guide.png"
       },
       {
         "pagePath": "pages/index/index",
-        "text": "规划"
+        "text": "规划",
+        "iconPath": "assets/tab/tab-plan.png",
+        "selectedIconPath": "assets/tab/tab-plan.png"
       },
       {
         "pagePath": "pages/mine/mine",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "assets/tab/tab-mine.png",
+        "selectedIconPath": "assets/tab/tab-mine.png"
       }
     ]
   },

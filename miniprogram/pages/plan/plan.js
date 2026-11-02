@@ -136,7 +136,8 @@ Page({
         dropped: day.dropped,
         open: dayIndex === 0,
         items: (Array.isArray(day.items) ? day.items : []).map((item) => {
-          const { points, ...rest } = item
+          const rest = Object.assign({}, item)
+          delete rest.points
           return rest
         })
       }))
@@ -241,7 +242,9 @@ Page({
       }
     }
     base.hotSpots = chips.map((spot) => {
-      const { active: _active, ratingText: _ratingText, ...rest } = spot
+      const rest = Object.assign({}, spot)
+      delete rest.active
+      delete rest.ratingText
       return rest
     })
     base.preferredSpots = chips.filter((spot) => spot.active).map((spot) => spot.name)
